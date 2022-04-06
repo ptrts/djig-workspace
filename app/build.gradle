@@ -1,0 +1,214 @@
+import org.apache.commons.io.FileUtils
+import we.gitUtils.GitCloner
+import we.processUtils.ProcessRunner
+
+import javax.inject.Inject
+import java.util.stream.Collectors
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            name = 's3Private'
+            url = 's3://maven.taruts.net'
+            credentials(AwsCredentials) {
+                accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
+                secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
+            }
+        }
+    }
+    dependencies {
+        classpath 'org.apache.commons:commons-lang3:3.12.0'
+        classpath 'commons-io:commons-io:2.11.0'
+        classpath 'com.google.guava:guava:31.1-jre'
+        classpath 'we:process-utils:001'
+        classpath 'we:git-utils:001'
+    }
+}
+
+plugins {
+    id 'org.springframework.boot' version '2.6.4'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'application'
+}
+
+group = 'we.git-implementations'
+sourceCompatibility = '17'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name = 's3Public'
+        url = 's3://public.maven.taruts.net'
+        credentials(AwsCredentials) {
+            accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
+            secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
+        }
+    }
+    maven {
+        name = 's3Private'
+        url = 's3://maven.taruts.net'
+        credentials(AwsCredentials) {
+            accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
+            secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    // Dev tools
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Spring Boot + WebFlux
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    implementation 'we.git-implementations:dynamic-api:001'
+
+    // Our libraries
+    implementation 'we:git-utils:001'
+    implementation 'we:gradle-utils:001'
+
+    // Utils
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'commons-io:commons-io:2.11.0'
+    implementation 'com.google.guava:guava:31.1-jre'
+
+    // Test
+    testImplementation 'io.projectreactor:reactor-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+class Ext {
+    static String gitRepoUrlPropertyName = 'dynamic-impl.git-repository.url'
+}
+
+abstract class InitLocalDynamicGitRepositoryTask extends DefaultTask {
+
+    @InputFile
+    final File applicationPropertiesFile
+
+    @Inject
+    InitLocalDynamicGitRepositoryTask(File applicationPropertiesFile) {
+        this.applicationPropertiesFile = applicationPropertiesFile
+        this.group = 'dynamic'
+    }
+
+    @TaskAction
+    def action() {
+
+        Properties applicationProperties = new Properties()
+        try (Reader reader = applicationPropertiesFile.newReader()) {
+            applicationProperties.load(reader)
+        }
+
+        String gitRepoUrlStr = applicationProperties.get(Ext.gitRepoUrlPropertyName)
+        URL gitRepoUrl = new URL(gitRepoUrlStr)
+        if (gitRepoUrl.protocol != 'file') {
+            throw new RuntimeException("Property $Ext.gitRepoUrlPropertyName has incorrect value $gitRepoUrlStr. The protocol must be 'file'")
+        }
+        String gitRepoPathStr = gitRepoUrl.authority + gitRepoUrl.path
+        File getRepoDirectory = new File(gitRepoPathStr)
+        getRepoDirectory.mkdirs()
+        ProcessRunner.runProcess(getRepoDirectory, 'git', 'init', '--bare')
+
+        File cloneDir = FileUtils.getFile(project.buildDir, 'dynamic-impl-dev')
+        if (cloneDir.exists()) {
+            FileUtils.deleteQuietly(cloneDir)
+        }
+
+        String resourcesDir = project.sourceSets.main.resources.srcDirs.first()
+        File devPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
+        def devProperties = new Properties()
+        try (Reader reader = devPropertiesFile.newReader()) {
+            devProperties.load(reader)
+        }
+        String devGitRepoUrlStr = devProperties.get(Ext.gitRepoUrlPropertyName)
+
+        // Клонируемся в каталог build/dynamic-impl-dev
+        String gitRepoUsername = devProperties.get('dynamic-impl.git-repository.username')
+        GitCloner.cloneOrUpdateGitRepository(devGitRepoUrlStr, gitRepoUsername, null, cloneDir)
+
+        // Сразу после клонирования перенаправляем remote origin на наш новый репозиторий
+        ProcessRunner.runProcess(cloneDir, 'git', 'remote', 'set-url', 'origin', gitRepoUrl.toString())
+
+        // Пушим все в новый репозиторий
+        ProcessRunner.runProcess(cloneDir, 'git', 'push', 'origin', 'master')
+    }
+}
+
+File globalResourcesDir = sourceSets.main.resources.srcDirs.first()
+for (def file : globalResourcesDir.listFiles()) {
+    def name = file.name
+    def isWindows = System.getProperty('os.name').startsWith('Windows')
+    def osFamily = isWindows ? 'win' : 'nix'
+    def pattern = ~/application-dynamic-local(-(.+))?-$osFamily\.properties/
+    def matcher = name =~ pattern
+    if (matcher.matches()) {
+        String profileSuffix = matcher.group(2)
+        String taskName
+        if (profileSuffix == null) {
+            taskName = 'initLocalDynamicGitRepository'
+        } else {
+            String[] parts = profileSuffix.split('-')
+            def profileSuffixPascal = Arrays
+                .stream(parts)
+                .map { part ->
+                    part[0].toUpperCase() + part.substring(1)
+                }
+                .collect(Collectors.joining())
+            taskName = 'initLocalDynamicGitRepository' + profileSuffixPascal
+        }
+
+        tasks.register(taskName, InitLocalDynamicGitRepositoryTask, file)
+    }
+}
+
+tasks.register('initDynamicImplDev') {
+    group = 'git'
+    doLast {
+
+        // Выясняем URL репозитория, где у нас живет этот самый dynamic-impl-dev
+        String resourcesDir = project.sourceSets.main.resources.srcDirs.first()
+        File dynamicDevPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
+        def dynamicDevProperties = new Properties()
+        try (Reader reader = dynamicDevPropertiesFile.newReader()) {
+            dynamicDevProperties.load(reader)
+        }
+        String dynamicDevGitRepoUrlStr = dynamicDevProperties.get(Ext.gitRepoUrlPropertyName)
+
+        // Создаем каталог, в котором у нас будет жить этот самый dynamic-impl-dev
+        File dynamicDevSourceDir = FileUtils.getFile(project.rootDir, '../other-git-repos/dynamic-dev')
+        FileUtils.deleteQuietly(dynamicDevSourceDir)
+        dynamicDevSourceDir.parentFile.mkdirs()
+
+        // Инициализируем там git
+        GitCloner.cloneOrUpdateGitRepository(dynamicDevGitRepoUrlStr, null, null, dynamicDevSourceDir)
+
+        // Добавляем туда remote с этим самым URL репозитория
+
+        // Делаем fetch
+        // Делаем pull мастера
+        // Делаем checkout мастера
+
+        // Вроде бы вот такие простые действия нам нужно сделать
+    }
+}
