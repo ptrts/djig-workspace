@@ -1,5 +1,5 @@
 import org.apache.commons.io.FileUtils
-import we.gitUtils.GitCloner
+import we.gitUtils.GitUtils
 import we.processUtils.ProcessRunner
 
 import javax.inject.Inject
@@ -24,6 +24,7 @@ buildscript {
         classpath 'com.google.guava:guava:31.1-jre'
         classpath 'we:process-utils:001'
         classpath 'we:git-utils:001'
+        classpath 'javax.inject:javax.inject:1'
     }
 }
 
@@ -97,8 +98,8 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-class Ext {
-    static String gitRepoUrlPropertyName = 'dynamic-impl.git-repository.url'
+interface Ext {
+    String gitRepoUrlPropertyName = 'dynamic-impl.git-repository.url'
 }
 
 abstract class InitLocalDynamicGitRepositoryTask extends DefaultTask {
@@ -145,7 +146,7 @@ abstract class InitLocalDynamicGitRepositoryTask extends DefaultTask {
 
         // Клонируемся в каталог build/dynamic-impl-dev
         String gitRepoUsername = devProperties.get('dynamic-impl.git-repository.username')
-        GitCloner.cloneOrUpdateGitRepository(devGitRepoUrlStr, gitRepoUsername, null, cloneDir)
+        GitUtils.cloneOrUpdate(devGitRepoUrlStr, gitRepoUsername, null, cloneDir)
 
         // Сразу после клонирования перенаправляем remote origin на наш новый репозиторий
         ProcessRunner.runProcess(cloneDir, 'git', 'remote', 'set-url', 'origin', gitRepoUrl.toString())
@@ -182,33 +183,32 @@ for (def file : globalResourcesDir.listFiles()) {
     }
 }
 
-tasks.register('initDynamicImplDev') {
-    group = 'git'
-    doLast {
+abstract class InitAdjacentGitRepoTask extends DefaultTask {
 
-        // Выясняем URL репозитория, где у нас живет этот самый dynamic-impl-dev
-        String resourcesDir = project.sourceSets.main.resources.srcDirs.first()
-        File dynamicDevPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
-        def dynamicDevProperties = new Properties()
-        try (Reader reader = dynamicDevPropertiesFile.newReader()) {
-            dynamicDevProperties.load(reader)
-        }
-        String dynamicDevGitRepoUrlStr = dynamicDevProperties.get(Ext.gitRepoUrlPropertyName)
+    @Input
+    final String adjacentRepoPostfix
 
-        // Создаем каталог, в котором у нас будет жить этот самый dynamic-impl-dev
-        File dynamicDevSourceDir = FileUtils.getFile(project.rootDir, '../other-git-repos/dynamic-dev')
-        FileUtils.deleteQuietly(dynamicDevSourceDir)
-        dynamicDevSourceDir.parentFile.mkdirs()
+    @Inject
+    InitAdjacentGitRepoTask(String adjacentRepoPostfix) {
+        this.adjacentRepoPostfix = adjacentRepoPostfix
+        this.group = 'other-git-repos'
+    }
 
-        // Инициализируем там git
-        GitCloner.cloneOrUpdateGitRepository(dynamicDevGitRepoUrlStr, null, null, dynamicDevSourceDir)
+    @TaskAction
+    def action() {
 
-        // Добавляем туда remote с этим самым URL репозитория
+        // Определяем что клонировать. Вычисляем URL репозитория для клонирования, отталкиваясь от URL текущего репозитория
+        String startingPointRepoPostfix = 'main'
+        String startingPointRepoUrl = ProcessRunner.runProcess(project.rootDir, 'git', 'remote', 'get-url', 'origin')
+        String adjacentRepoUrl = startingPointRepoUrl.replaceAll(/$startingPointRepoPostfix(?=\.git$)/, adjacentRepoPostfix)
 
-        // Делаем fetch
-        // Делаем pull мастера
-        // Делаем checkout мастера
+        // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
+        File sourceDir = FileUtils.getFile(project.rootDir.parent, "other-git-repos", adjacentRepoPostfix)
 
-        // Вроде бы вот такие простые действия нам нужно сделать
+        // Клонируем
+        GitUtils.forceClone(adjacentRepoUrl, sourceDir)
     }
 }
+
+tasks.register('initDynamicApi', InitAdjacentGitRepoTask, 'dynamic-api')
+tasks.register('initDynamicDev', InitAdjacentGitRepoTask, 'dynamic-dev')
