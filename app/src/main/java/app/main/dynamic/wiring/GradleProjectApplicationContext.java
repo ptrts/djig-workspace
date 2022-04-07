@@ -13,7 +13,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.web.util.UriComponentsBuilder;
-import we.gitUtils.GitCloner;
+import we.gitUtils.GitUtils;
 import we.gradleUtils.GradleBuilder;
 
 import java.io.File;
@@ -34,7 +34,7 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
             String password,
             File projectSourceDirectory
     ) {
-        GitCloner.cloneOrUpdateGitRepository(url, username, password, projectSourceDirectory);
+        GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
         GradleBuilder.buildGradleProject(projectSourceDirectory);
 
         File classesDirectory = FileUtils.getFile(projectSourceDirectory, "build/classes/java/main");

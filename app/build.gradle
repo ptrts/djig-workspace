@@ -3,7 +3,7 @@ import we.gitUtils.GitUtils
 import we.processUtils.ProcessRunner
 
 import javax.inject.Inject
-import java.util.stream.Collectors
+import java.nio.charset.StandardCharsets
 
 buildscript {
     repositories {
@@ -98,88 +98,56 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-interface Ext {
-    String gitRepoUrlPropertyName = 'dynamic-impl.git-repository.url'
-}
+tasks.register('initDynamicLocal') {
+    it.group = 'other-git-repos'
 
-abstract class InitLocalDynamicGitRepositoryTask extends DefaultTask {
+    it.description = '''
+    Clones dynamic-dev to other-git-repos/dynamic-local, 
+    detaches it from the dynamic-dev remote, 
+    then linkes it with a newly created remote other-git-repos/dynamic-local/remote
+    which is inside.
+    '''.stripIndent()
 
-    @InputFile
-    final File applicationPropertiesFile
-
-    @Inject
-    InitLocalDynamicGitRepositoryTask(File applicationPropertiesFile) {
-        this.applicationPropertiesFile = applicationPropertiesFile
-        this.group = 'dynamic'
-    }
-
-    @TaskAction
-    def action() {
-
-        Properties applicationProperties = new Properties()
-        try (Reader reader = applicationPropertiesFile.newReader()) {
-            applicationProperties.load(reader)
+    it.doLast {
+        // Вычисляем, куда мы будем клонироваться
+        File dynamicLocalDirectory = java.nio.file.Path
+            .of(project.rootDir.path, '../other-git-repos/dynamic-local')
+            .toAbsolutePath()
+            .normalize()
+            .toFile()
+        // Удаляем этот каталог, если он есть
+        if (dynamicLocalDirectory.exists()) {
+            FileUtils.forceDelete(dynamicLocalDirectory)
         }
-
-        String gitRepoUrlStr = applicationProperties.get(Ext.gitRepoUrlPropertyName)
-        URL gitRepoUrl = new URL(gitRepoUrlStr)
-        if (gitRepoUrl.protocol != 'file') {
-            throw new RuntimeException("Property $Ext.gitRepoUrlPropertyName has incorrect value $gitRepoUrlStr. The protocol must be 'file'")
-        }
-        String gitRepoPathStr = gitRepoUrl.authority + gitRepoUrl.path
-        File getRepoDirectory = new File(gitRepoPathStr)
-        getRepoDirectory.mkdirs()
-        ProcessRunner.runProcess(getRepoDirectory, 'git', 'init', '--bare')
-
-        File cloneDir = FileUtils.getFile(project.buildDir, 'dynamic-impl-dev')
-        if (cloneDir.exists()) {
-            FileUtils.deleteQuietly(cloneDir)
-        }
+        FileUtils.forceMkdir(dynamicLocalDirectory)
 
         String resourcesDir = project.sourceSets.main.resources.srcDirs.first()
-        File devPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
-        def devProperties = new Properties()
-        try (Reader reader = devPropertiesFile.newReader()) {
-            devProperties.load(reader)
+        File dynamicDevPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
+        def dynamicDevProperties = new Properties()
+        try (Reader reader = dynamicDevPropertiesFile.newReader()) {
+            dynamicDevProperties.load(reader)
         }
-        String devGitRepoUrlStr = devProperties.get(Ext.gitRepoUrlPropertyName)
+        String dynamicDevRemoteUrlStr = dynamicDevProperties.get('dynamic-impl.git-repository.url')
 
         // Клонируемся в каталог build/dynamic-impl-dev
-        String gitRepoUsername = devProperties.get('dynamic-impl.git-repository.username')
-        GitUtils.cloneOrUpdate(devGitRepoUrlStr, gitRepoUsername, null, cloneDir)
+        GitUtils.clone(dynamicDevRemoteUrlStr, dynamicLocalDirectory)
 
-        // Сразу после клонирования перенаправляем remote origin на наш новый репозиторий
-        ProcessRunner.runProcess(cloneDir, 'git', 'remote', 'set-url', 'origin', gitRepoUrl.toString())
+        File settingsGradleFile = FileUtils.getFile(dynamicLocalDirectory, 'settings.gradle')
+        FileUtils.writeStringToFile(settingsGradleFile, "rootProject.name = 'dynamic-local'", StandardCharsets.UTF_8)
+        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'add', '*')
+        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'commit', '-m', 'Changing project name to dynamic-local')
+
+        // В каталоге, где должен быть remote, содаем репозиторий
+        File remoteDirectory = FileUtils.getFile(dynamicLocalDirectory, 'remote')
+        FileUtils.forceMkdir(remoteDirectory)
+        ProcessRunner.runProcess(remoteDirectory, 'git', 'init', '--bare')
+
+        // Перенаправляем remote origin на наш новый репозиторий
+        String remoteUrlStr = "file://$remoteDirectory"
+        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'remote', 'set-url', 'origin', remoteUrlStr)
 
         // Пушим все в новый репозиторий
-        ProcessRunner.runProcess(cloneDir, 'git', 'push', 'origin', 'master')
-    }
-}
-
-File globalResourcesDir = sourceSets.main.resources.srcDirs.first()
-for (def file : globalResourcesDir.listFiles()) {
-    def name = file.name
-    def isWindows = System.getProperty('os.name').startsWith('Windows')
-    def osFamily = isWindows ? 'win' : 'nix'
-    def pattern = ~/application-dynamic-local(-(.+))?-$osFamily\.properties/
-    def matcher = name =~ pattern
-    if (matcher.matches()) {
-        String profileSuffix = matcher.group(2)
-        String taskName
-        if (profileSuffix == null) {
-            taskName = 'initLocalDynamicGitRepository'
-        } else {
-            String[] parts = profileSuffix.split('-')
-            def profileSuffixPascal = Arrays
-                .stream(parts)
-                .map { part ->
-                    part[0].toUpperCase() + part.substring(1)
-                }
-                .collect(Collectors.joining())
-            taskName = 'initLocalDynamicGitRepository' + profileSuffixPascal
-        }
-
-        tasks.register(taskName, InitLocalDynamicGitRepositoryTask, file)
+        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'push', 'origin', 'master')
     }
 }
 
@@ -188,24 +156,28 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
     @Input
     final String adjacentRepoPostfix
 
+    private String adjacentRepoUrl
+    private File sourceDir
+
     @Inject
     InitAdjacentGitRepoTask(String adjacentRepoPostfix) {
         this.adjacentRepoPostfix = adjacentRepoPostfix
-        this.group = 'other-git-repos'
-    }
 
-    @TaskAction
-    def action() {
+        this.group = 'other-git-repos'
 
         // Определяем что клонировать. Вычисляем URL репозитория для клонирования, отталкиваясь от URL текущего репозитория
         String startingPointRepoPostfix = 'main'
         String startingPointRepoUrl = ProcessRunner.runProcess(project.rootDir, 'git', 'remote', 'get-url', 'origin')
-        String adjacentRepoUrl = startingPointRepoUrl.replaceAll(/$startingPointRepoPostfix(?=\.git$)/, adjacentRepoPostfix)
+        adjacentRepoUrl = startingPointRepoUrl.replaceAll(/$startingPointRepoPostfix(?=\.git$)/, adjacentRepoPostfix)
 
         // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
-        File sourceDir = FileUtils.getFile(project.rootDir.parent, "other-git-repos", adjacentRepoPostfix)
+        sourceDir = FileUtils.getFile(project.rootDir.parent, "other-git-repos", adjacentRepoPostfix)
 
-        // Клонируем
+        this.description = "Clones $adjacentRepoUrl into $sourceDir"
+    }
+
+    @TaskAction
+    def action() {
         GitUtils.forceClone(adjacentRepoUrl, sourceDir)
     }
 }
