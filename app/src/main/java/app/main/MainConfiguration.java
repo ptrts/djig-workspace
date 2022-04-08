@@ -11,7 +11,7 @@ public class MainConfiguration {
 
     @Bean("dynamicImplSourceDirectory")
     File dynamicImplSourceDirectory() {
-        String directoryName = "dynamic-impl";
+        String directoryName = "dynamic";
         Path path = Path.of(directoryName).toAbsolutePath().normalize();
         return path.toFile();
     }

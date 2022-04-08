@@ -18,6 +18,7 @@ import we.gradleUtils.GradleBuilder;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +35,17 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
             String password,
             File projectSourceDirectory
     ) {
+        boolean directoryUrl = Stream.of(
+                "http:", "https:", "file:", "git@"
+        ).noneMatch(url::startsWith);
+
+        if (directoryUrl) {
+            // Во-первых, ко всем файловым URL без file:// в начале мы будем добавлять file://
+            // Это нужно для того, чтобы клонирование осуществлялось не копированием файлов, а тем же самым кодом в Git, который используется для сетевых URL
+            // Соответственно, здесь мы также должны делать из относительных путей абсолютные
+            url = "file://" + Path.of(url).toAbsolutePath().normalize();
+        }
+
         GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
         GradleBuilder.buildGradleProject(projectSourceDirectory);
 
