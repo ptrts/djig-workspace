@@ -1,0 +1,222 @@
+import org.apache.commons.io.FileUtils
+import org.apache.commons.lang3.StringUtils
+import org.gitlab4j.api.GitLabApi
+import org.gitlab4j.api.models.User
+import reactor.netty.http.client.HttpClient
+import reactor.netty.http.client.HttpClientResponse
+import reactor.netty.http.client.PrematureCloseException
+import reactor.util.Loggers
+import we.processUtils.ProcessRunner
+
+import java.nio.file.FileVisitOption
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.attribute.BasicFileAttributes
+import java.time.Duration
+import java.util.regex.Matcher
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            name = 's3Private'
+            url = 's3://maven.taruts.net'
+            credentials(AwsCredentials) {
+                accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
+                secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
+            }
+        }
+    }
+    dependencies {
+        classpath 'io.projectreactor.netty:reactor-netty-http:1.0.18'
+        classpath 'org.slf4j:slf4j-simple:1.7.36'
+        classpath 'org.apache.commons:commons-lang3:3.12.0'
+        classpath 'commons-io:commons-io:2.11.0'
+        classpath 'com.google.guava:guava:31.1-jre'
+        classpath 'we:process-utils:001'
+        classpath 'we:git-utils:001'
+        classpath 'javax.inject:javax.inject:1'
+        classpath 'org.gitlab4j:gitlab4j-api:5.0.1'
+    }
+}
+
+tasks.register('createContainer') {
+    it.group = 'gitlab-container'
+    it.timeout = Duration.ofMinutes(15)
+    it.dependsOn('removeAll')
+    it.doLast {
+        String home = FileUtils.getFile(project.rootDir, 'home').canonicalPath
+        ProcessRunner.runProcess(
+            project.rootDir,
+            'docker', 'run',
+            '--detach',
+            '--hostname', 'gitlab.domain.name.placeholder',
+            '--publish', '9522:22',
+            '--publish', '9580:80',
+            '--publish', '9543:443',
+            '--name', 'gitlab.taruts.net',
+            '--restart', 'always',
+            '--volume', "$home/config:/etc/gitlab",
+            '--volume', "$home/logs:/var/log/gitlab",
+            '--volume', "$home/data:/var/opt/gitlab",
+            '--shm-size', '256m',
+            '--add-host', 'host.docker.internal:host-gateway',
+            'gitlab/gitlab-ee:latest'
+        )
+
+        Loggers.useSl4jLoggers()
+
+        HttpClient httpClient = HttpClient
+            .create()
+            .compress(true)
+            .baseUrl('http://localhost:9580')
+
+        while (true) {
+            try {
+                try {
+                    HttpClientResponse response = httpClient
+                        .get()
+                        .response()
+                        .block(Duration.ofSeconds(10))
+
+                    int code = response.status().code()
+                    if (code >= 200 && code < 400) {
+                        break
+                    }
+                } catch (Exception e) {
+                    // Unwrapping the cause if exists
+                    throw e.cause == null ? e : e.cause
+                }
+            } catch (PrematureCloseException | ConnectException ignored) {
+            } catch (Exception e) {
+                println(">>> ${e.class.name}")
+                throw e
+            }
+        }
+    }
+}
+
+tasks.register('createUser') {
+    it.group = 'gitlab-container'
+    it.doLast {
+        File file = FileUtils.getFile(project.rootDir, 'home/config/initial_root_password')
+        List<String> lines = FileUtils.readLines(file, 'UTF-8')
+        String password = lines
+            .stream()
+            .map(line -> line =~ /Password:\s?(.+)/)
+            .filter(Matcher::find)
+            .map(matcher -> matcher.group(1))
+            .findAny()
+            .orElseThrow(() -> new RuntimeException('Password not found'))
+
+        GitLabApi gitLabApi = GitLabApi.oauth2Login('http://localhost:9580', 'root', password, true)
+
+        String name = 'user'
+
+        User user = new User()
+        user.username = name
+        user.name = name
+        user.email = "$name@gmail.com"
+        user.isAdmin = true
+        user.canCreateGroup = true
+        user.projectsLimit = 0
+        user.sharedRunnersMinutesLimit = 0
+        user.skipConfirmation = true
+
+        gitLabApi.userApi.createUser(user, '123456789', false)
+    }
+}
+
+tasks.register('createAll') {
+    it.group = 'gitlab-container'
+    it.dependsOn('createContainer', 'createUser')
+}
+
+tasks.register('startContainer') {
+    it.group = 'gitlab-container'
+    it.doLast {
+        ProcessRunner.runProcess(
+            project.rootDir,
+            'docker', 'container', 'start', 'gitlab.taruts.net'
+        )
+    }
+}
+
+boolean containerExists() {
+    String containerId = ProcessRunner.runProcess(
+        project.rootDir,
+        'docker', 'container', 'ls',
+        '-q',
+        '-a',
+        '-f', 'name=gitlab.taruts.net'
+    )
+    return StringUtils.isNotBlank(containerId)
+}
+
+tasks.register('stopContainer') {
+    it.group = 'gitlab-container'
+    it.doLast {
+        if (containerExists()) {
+            ProcessRunner.runProcess(
+                project.rootDir,
+                'docker', 'container', 'stop', 'gitlab.taruts.net'
+            )
+        }
+    }
+}
+
+tasks.register('removeContainer') {
+    it.group = 'gitlab-container'
+    it.dependsOn('stopContainer')
+    it.doLast {
+        if (containerExists()) {
+            ProcessRunner.runProcess(
+                project.rootDir,
+                'docker', 'container', 'rm', 'gitlab.taruts.net'
+            )
+        }
+    }
+}
+
+tasks.register('removeContainerData') {
+    it.group = 'gitlab-container'
+    it.shouldRunAfter('removeContainer')
+    it.doLast {
+        File directory = FileUtils.getFile(project.rootDir, 'home')
+        if (!directory.exists()) {
+            return
+        }
+
+        // FileUtils не позволяют одним методом удалить каталог, если там есть символьные ссылки Linux
+        // Приходится все символьные ссылки предварительно удалять вручную
+        Files.walkFileTree(directory.toPath(), Collections.singleton(FileVisitOption.FOLLOW_LINKS), 10, new java.nio.file.FileVisitor<java.nio.file.Path>() {
+
+            FileVisitResult preVisitDirectory(java.nio.file.Path path, BasicFileAttributes attrs) throws IOException {
+                return FileVisitResult.CONTINUE
+            }
+
+            FileVisitResult visitFile(java.nio.file.Path path, BasicFileAttributes attrs) throws IOException {
+                File file = path.toFile()
+                file.setWritable(true)
+                file.delete()
+                return FileVisitResult.CONTINUE
+            }
+
+            FileVisitResult visitFileFailed(java.nio.file.Path path, IOException exc) throws IOException {
+                return FileVisitResult.CONTINUE
+            }
+
+            FileVisitResult postVisitDirectory(java.nio.file.Path path, IOException exc) throws IOException {
+                return FileVisitResult.CONTINUE
+            }
+        })
+
+        FileUtils.deleteDirectory(directory)
+    }
+}
+
+tasks.register('removeAll') {
+    it.group = 'gitlab-container'
+    it.dependsOn('removeContainer', 'removeContainerData')
+}

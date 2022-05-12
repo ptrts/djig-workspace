@@ -166,7 +166,7 @@ tasks.register('initDynamicLocal') {
         } else if (remoteType == LocalDynamicGitRepoRemoteType.GITLAB) {
 
             // Create a GitLabApi instance to communicate with your GitLab server
-            GitLabApi gitLabApi = GitLabApi.oauth2Login('http://localhost:9580', 'root', '123456789', true)
+            GitLabApi gitLabApi = GitLabApi.oauth2Login('http://localhost:9580', 'user', '123456789', true)
 
             // Ищем или создаем группу проектов
             String groupPath = 'dynamic-java-stored-in-git'
@@ -211,7 +211,7 @@ tasks.register('initDynamicLocal') {
             assert gitlabProject != null
 
             remoteUrlStr = gitlabProject.getHttpUrlToRepo()
-            remoteUrlStr = remoteUrlStr.replaceAll(/((?<=^http?:\/\/)gitlab\.domain\.name\.placeholder(?=\/))/, 'root:123456789@localhost:9580')
+            remoteUrlStr = remoteUrlStr.replaceAll(/((?<=^http?:\/\/)gitlab\.domain\.name\.placeholder(?=\/))/, 'user:123456789@localhost:9580')
         } else {
             throw new IllegalStateException()
         }
