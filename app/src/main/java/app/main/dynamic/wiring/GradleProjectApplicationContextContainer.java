@@ -34,21 +34,17 @@ public class GradleProjectApplicationContextContainer {
 
     public void refresh() {
 
-        delegatingDynamicComponent.setDelegate(null);
-
-        close();
-
         DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
-        gradleProjectApplicationContext = new GradleProjectApplicationContext(
+        GradleProjectApplicationContext newContext = new GradleProjectApplicationContext(
                 applicationContext,
                 gitRepositoryProperties.getUrl(),
                 gitRepositoryProperties.getUsername(),
                 gitRepositoryProperties.getPassword(),
                 dynamicImplSourceDirectory
         );
-        gradleProjectApplicationContext.refresh();
+        newContext.refresh();
 
-        Map<String, DynamicComponent> dynamicComponentsMap = gradleProjectApplicationContext.getBeansOfType(DynamicComponent.class);
+        Map<String, DynamicComponent> dynamicComponentsMap = newContext.getBeansOfType(DynamicComponent.class);
         List<DynamicComponent> dynamicComponents = dynamicComponentsMap
                 .values()
                 .stream()
@@ -63,6 +59,16 @@ public class GradleProjectApplicationContextContainer {
         }
         DynamicComponent childContextDynamicComponent = dynamicComponents.get(0);
         delegatingDynamicComponent.setDelegate(childContextDynamicComponent);
+
+        GradleProjectApplicationContext oldContext = gradleProjectApplicationContext;
+
+        // Saving the new context in the field
+        gradleProjectApplicationContext = newContext;
+
+        // Closing the old context
+        if (oldContext != null) {
+            oldContext.close();
+        }
     }
 
     @SneakyThrows

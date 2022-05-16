@@ -30,9 +30,6 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     @Autowired
     private DynamicImplProperties dynamicImplProperties;
 
-    @Autowired
-    private GradleProjectApplicationContextContainer gradleProjectApplicationContextContainer;
-
     @Override
     @SneakyThrows
     public void start() {
@@ -80,8 +77,6 @@ public class GitlabHookRegistrar implements SmartLifecycle {
                 throw new RuntimeException(e);
             }
         });
-
-        gradleProjectApplicationContextContainer.init();
 
         running = true;
     }
