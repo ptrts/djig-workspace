@@ -24,5 +24,21 @@ public class DynamicImplProperties {
 
         @Value("${dynamic-impl.git-repository.password:}")
         String password;
+
+        @Autowired
+        Hook hook;
+
+        @Component
+        @Getter
+        public static class Hook {
+            @Value("${dynamic-impl.git-repository.hook.base-url:}")
+            String baseUrl;
+
+            @Value("${dynamic-impl.git-repository.hook.ssl-verification:false}")
+            boolean sslVerification;
+
+            @Value("${dynamic-impl.git-repository.hook.secret-token:}")
+            String secretToken;
+        }
     }
 }

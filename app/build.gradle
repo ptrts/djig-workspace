@@ -1,4 +1,5 @@
 import org.apache.commons.io.FileUtils
+import org.apache.commons.lang3.StringUtils
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group
@@ -85,6 +86,9 @@ dependencies {
 
     implementation 'we.git-implementations:dynamic-api:001'
 
+    // GitLab API
+    implementation 'org.gitlab4j:gitlab4j-api:5.0.1'
+
     // Our libraries
     implementation 'we:git-utils:001'
     implementation 'we:gradle-utils:001'
@@ -130,8 +134,9 @@ tasks.register('initDynamicLocal') {
         }
         FileUtils.forceMkdir(dynamicLocalDirectory)
 
-        // Из основного проекта берем URL репозитория dynamic-dev
         String resourcesDir = project.sourceSets.main.resources.srcDirs.first()
+
+        // Из основного проекта берем URL репозитория dynamic-dev
         File dynamicDevPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
         def dynamicDevProperties = new Properties()
         try (Reader reader = dynamicDevPropertiesFile.newReader()) {
@@ -152,6 +157,8 @@ tasks.register('initDynamicLocal') {
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'add', '*')
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'commit', '-m', 'Changing project name to dynamic-local')
 
+        // todo Либо выделить отдельную таску с гит репозиторием-файловым каталогом,
+        //      либо вообще убрать такое понятие как гит репозиторий-файловый каталог
         LocalDynamicGitRepoRemoteType remoteType = LocalDynamicGitRepoRemoteType.GITLAB
 
         String remoteUrlStr
@@ -165,11 +172,38 @@ tasks.register('initDynamicLocal') {
             remoteUrlStr = "file://$remoteDirectory"
         } else if (remoteType == LocalDynamicGitRepoRemoteType.GITLAB) {
 
+            File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local-gitlab.properties')
+            def localGitlabProperties = new Properties()
+            try (Reader reader = localGitlabPropertiesFile.newReader()) {
+                localGitlabProperties.load(reader)
+            }
+
+            String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
+            String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
+            String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
+
+            URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
+            URI propertiesGitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
+
             // Create a GitLabApi instance to communicate with your GitLab server
-            GitLabApi gitLabApi = GitLabApi.oauth2Login('http://localhost:9580', 'user', '123456789', true)
+            GitLabApi gitLabApi = GitLabApi.oauth2Login(propertiesGitlabUri.toString(), propertiesUsername, propertiesPassword, true)
+
+            List<String> pathParts = Arrays
+                .stream(
+                    propertiesProjectUri.path.split('/')
+                )
+                .filter(StringUtils::isNotBlank)
+                .toList()
+            String projectFileName = pathParts.get(pathParts.size() - 1)
+
+            int dotIndex = projectFileName.lastIndexOf('.')
+            String projectName = dotIndex == -1
+                ? projectFileName
+                : projectFileName.substring(0, dotIndex)
+
+            String groupPath = String.join('/', pathParts.subList(0, pathParts.size() - 1))
 
             // Ищем или создаем группу проектов
-            String groupPath = 'dynamic-java-stored-in-git'
             Group group = gitLabApi.getGroupApi().getOptionalGroup(groupPath)
                 .orElseGet {
                     gitLabApi.getGroupApi().addGroup('Dynamic Java code stored in Git', groupPath)
@@ -178,7 +212,6 @@ tasks.register('initDynamicLocal') {
             org.gitlab4j.api.models.Project gitlabProject
 
             // Ищем или создаем проект
-            String projectName = 'dynamic-dev'
             gitLabApi.getProjectApi().getOptionalProject(groupPath, projectName)
                 .ifPresent {
                     gitLabApi.getProjectApi().deleteProject(it.id)
@@ -211,7 +244,21 @@ tasks.register('initDynamicLocal') {
             assert gitlabProject != null
 
             remoteUrlStr = gitlabProject.getHttpUrlToRepo()
-            remoteUrlStr = remoteUrlStr.replaceAll(/((?<=^http?:\/\/)gitlab\.domain\.name\.placeholder(?=\/))/, 'user:123456789@localhost:9580')
+
+            URI remoteUri = new URI(remoteUrlStr)
+
+            // Добавляем логин и пароль. Меняем хост и порт
+            remoteUri = new URI(
+                remoteUri.scheme,
+                "$propertiesUsername:$propertiesPassword",
+                propertiesGitlabUri.host,
+                propertiesGitlabUri.port,
+                remoteUri.path,
+                null,
+                null
+            )
+
+            remoteUrlStr = remoteUri.toString()
         } else {
             throw new IllegalStateException()
         }

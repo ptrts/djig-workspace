@@ -1,6 +1,8 @@
 package app.main.dynamic.wiring;
 
 import app.dynamic.api.DynamicComponent;
+import lombok.SneakyThrows;
+import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
@@ -61,6 +63,12 @@ public class GradleProjectApplicationContextContainer {
         }
         DynamicComponent childContextDynamicComponent = dynamicComponents.get(0);
         delegatingDynamicComponent.setDelegate(childContextDynamicComponent);
+    }
+
+    @SneakyThrows
+    public void init() {
+        FileUtils.forceDelete(dynamicImplSourceDirectory);
+        refresh();
     }
 
     @EventListener(ContextClosedEvent.class)

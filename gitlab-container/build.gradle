@@ -1,5 +1,6 @@
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.SystemUtils
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.models.User
 import reactor.netty.http.client.HttpClient
@@ -47,30 +48,61 @@ tasks.register('createContainer') {
     it.dependsOn('removeAll')
     it.doLast {
         String home = FileUtils.getFile(project.rootDir, 'home').canonicalPath
-        ProcessRunner.runProcess(
-            project.rootDir,
-            'docker', 'run',
-            '--detach',
-            '--hostname', 'gitlab.domain.name.placeholder',
-            '--publish', '9522:22',
-            '--publish', '9580:80',
-            '--publish', '9543:443',
-            '--name', 'gitlab.taruts.net',
-            '--restart', 'always',
-            '--volume', "$home/config:/etc/gitlab",
-            '--volume', "$home/logs:/var/log/gitlab",
-            '--volume', "$home/data:/var/opt/gitlab",
-            '--shm-size', '256m',
-            '--add-host', 'host.docker.internal:host-gateway',
-            'gitlab/gitlab-ee:latest'
+
+        // todo Вынести в общее место
+
+        File localGitlabPropertiesFile = FileUtils.getFile(project.rootDir, '../app/src/main/resources/application-dynamic-local-gitlab.properties')
+        Properties localGitlabProperties = new Properties()
+        try (Reader reader = localGitlabPropertiesFile.newReader()) {
+            localGitlabProperties.load(reader)
+        }
+
+        String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
+        String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
+        String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
+
+        URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
+        URI gitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
+
+        // todo ^^^ Вынести в общее место
+
+        List<String> command = new ArrayList<>()
+
+        command.addAll(
+            List.of(
+                'docker', 'run',
+                '--detach',
+                '--hostname', 'gitlab.domain.name.placeholder',
+                '--publish', '9522:22',
+                '--publish', "${gitlabUri.port}:80".toString(),
+                '--publish', '9543:443',
+                '--name', 'gitlab.taruts.net',
+                '--restart', 'always',
+                '--volume', "$home/config:/etc/gitlab".toString(),
+                '--volume', "$home/logs:/var/log/gitlab".toString(),
+                '--volume', "$home/data:/var/opt/gitlab".toString(),
+                '--shm-size', '256m'
+            )
         )
+
+        if (SystemUtils.IS_OS_LINUX) {
+            command.addAll(
+                List.of(
+                    '--add-host', 'host.docker.internal:host-gateway'
+                )
+            )
+        }
+
+        command.add('gitlab/gitlab-ce:14.7.5-ce.0')
+
+        ProcessRunner.runProcess(project.rootDir, command)
 
         Loggers.useSl4jLoggers()
 
         HttpClient httpClient = HttpClient
             .create()
             .compress(true)
-            .baseUrl('http://localhost:9580')
+            .baseUrl(gitlabUri.toString())
 
         while (true) {
             try {
@@ -110,21 +142,36 @@ tasks.register('createUser') {
             .findAny()
             .orElseThrow(() -> new RuntimeException('Password not found'))
 
-        GitLabApi gitLabApi = GitLabApi.oauth2Login('http://localhost:9580', 'root', password, true)
+        // todo Вынести в общее место
 
-        String name = 'user'
+        File localGitlabPropertiesFile = FileUtils.getFile(project.rootDir, '../app/src/main/resources/application-dynamic-local-gitlab.properties')
+        Properties localGitlabProperties = new Properties()
+        try (Reader reader = localGitlabPropertiesFile.newReader()) {
+            localGitlabProperties.load(reader)
+        }
+
+        String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
+        String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
+        String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
+
+        URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
+        URI gitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
+
+        // todo ^^^ Вынести в общее место
+
+        GitLabApi gitLabApi = GitLabApi.oauth2Login(gitlabUri.toString(), 'root', password, true)
 
         User user = new User()
-        user.username = name
-        user.name = name
-        user.email = "$name@gmail.com"
+        user.username = propertiesUsername
+        user.name = propertiesUsername
+        user.email = "${propertiesUsername}@mail.com"
         user.isAdmin = true
         user.canCreateGroup = true
         user.projectsLimit = 0
         user.sharedRunnersMinutesLimit = 0
         user.skipConfirmation = true
 
-        gitLabApi.userApi.createUser(user, '123456789', false)
+        gitLabApi.userApi.createUser(user, propertiesPassword, false)
     }
 }
 
