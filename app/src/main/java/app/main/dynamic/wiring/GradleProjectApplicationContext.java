@@ -13,8 +13,8 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.web.util.UriComponentsBuilder;
-import we.gitUtils.GitUtils;
-import we.gradleUtils.GradleBuilder;
+import org.taruts.gitUtils.GitUtils;
+import org.taruts.gradleUtils.GradleBuilder;
 
 import java.io.File;
 import java.net.URL;

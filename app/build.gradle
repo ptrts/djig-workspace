@@ -3,8 +3,8 @@ import org.apache.commons.lang3.StringUtils
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group
-import we.gitUtils.GitUtils
-import we.processUtils.ProcessRunner
+import org.taruts.gitUtils.GitUtils
+import org.taruts.processUtils.ProcessRunner
 
 import javax.inject.Inject
 import java.nio.charset.StandardCharsets
