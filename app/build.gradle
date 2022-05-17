@@ -216,12 +216,17 @@ tasks.register('initDynamicLocal') {
                 .ifPresent {
                     gitLabApi.getProjectApi().deleteProject(it.id)
                     println('Waiting for project deletion...')
-                    for (i in 60..1) {
+                    int i = 60
+                    for (; i > 0; i--) {
                         gitlabProject = gitLabApi.getProjectApi().getOptionalProject(groupPath, projectName).orElse(null)
-                        if (gitlabProject != null) {
-                            println("$i...")
-                            Thread.sleep(1000)
+                        if (gitlabProject == null) {
+                            break
                         }
+                        println("$i...")
+                        Thread.sleep(1000)
+                    }
+                    if (i == 0) {
+                        throw new RuntimeException("Could not delete project $projectName")
                     }
                 }
 
