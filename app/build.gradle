@@ -115,16 +115,16 @@ tasks.register('initDynamicLocal') {
     it.group = 'other-git-repos'
 
     it.description = '''
-    Clones dynamic-dev to other-git-repos/dynamic-local, 
+    Clones dynamic-dev to dynamic-local, 
     detaches it from the dynamic-dev remote, 
-    then linkes it with a newly created remote other-git-repos/dynamic-local/remote
+    then linkes it with a newly created remote dynamic-local/remote
     which is inside.
     '''.stripIndent()
 
     it.doLast {
         // Вычисляем, куда мы будем клонироваться
         File dynamicLocalDirectory = java.nio.file.Path
-            .of(project.rootDir.path, '../other-git-repos/dynamic-local')
+            .of(project.rootDir.path, '../dynamic-local')
             .toAbsolutePath()
             .normalize()
             .toFile()
@@ -296,7 +296,7 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
         adjacentRepoUrl = startingPointRepoUrl.replaceAll(/$startingPointRepoPostfix(?=\.git$)/, adjacentRepoPostfix)
 
         // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
-        sourceDir = FileUtils.getFile(project.rootDir.parent, "other-git-repos", adjacentRepoPostfix)
+        sourceDir = FileUtils.getFile(project.rootDir.parent, adjacentRepoPostfix)
 
         this.description = "Clones $adjacentRepoUrl into $sourceDir"
     }
