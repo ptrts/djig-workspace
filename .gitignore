@@ -1,6 +1,12 @@
 ### IntelliJ IDEA ###
 .idea
 *.iml
+
+### Gradle ###
+.gradle
+build
+
+working-directory
 dynamic-api
 dynamic-dev
 dynamic-local

@@ -47,11 +47,12 @@ tasks.register('createContainer') {
     it.timeout = Duration.ofMinutes(15)
     it.dependsOn('removeAll')
     it.doLast {
-        String home = FileUtils.getFile(project.rootDir, 'home').canonicalPath
+        String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
 
         // todo Вынести в общее место
 
-        File localGitlabPropertiesFile = FileUtils.getFile(project.rootDir, '../app/src/main/resources/application-dynamic-local-gitlab.properties')
+        String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
+        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local-gitlab.properties')
         Properties localGitlabProperties = new Properties()
         try (Reader reader = localGitlabPropertiesFile.newReader()) {
             localGitlabProperties.load(reader)
@@ -95,7 +96,7 @@ tasks.register('createContainer') {
 
         command.add('gitlab/gitlab-ce:14.10.2-ce.0')
 
-        ProcessRunner.runProcess(project.rootDir, command)
+        ProcessRunner.runProcess(project.projectDir, command)
 
         Loggers.useSl4jLoggers()
 
@@ -132,7 +133,7 @@ tasks.register('createContainer') {
 tasks.register('createUser') {
     it.group = 'gitlab-container'
     it.doLast {
-        File file = FileUtils.getFile(project.rootDir, 'home/config/initial_root_password')
+        File file = FileUtils.getFile(project.projectDir, 'home/config/initial_root_password')
         List<String> lines = FileUtils.readLines(file, 'UTF-8')
         String password = lines
             .stream()
@@ -144,7 +145,8 @@ tasks.register('createUser') {
 
         // todo Вынести в общее место
 
-        File localGitlabPropertiesFile = FileUtils.getFile(project.rootDir, '../app/src/main/resources/application-dynamic-local-gitlab.properties')
+        String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
+        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local-gitlab.properties')
         Properties localGitlabProperties = new Properties()
         try (Reader reader = localGitlabPropertiesFile.newReader()) {
             localGitlabProperties.load(reader)
@@ -184,7 +186,7 @@ tasks.register('startContainer') {
     it.group = 'gitlab-container'
     it.doLast {
         ProcessRunner.runProcess(
-            project.rootDir,
+            project.projectDir,
             'docker', 'container', 'start', 'gitlab.taruts.net'
         )
     }
@@ -192,7 +194,7 @@ tasks.register('startContainer') {
 
 boolean containerExists() {
     String containerId = ProcessRunner.runProcess(
-        project.rootDir,
+        project.projectDir,
         'docker', 'container', 'ls',
         '-q',
         '-a',
@@ -206,7 +208,7 @@ tasks.register('stopContainer') {
     it.doLast {
         if (containerExists()) {
             ProcessRunner.runProcess(
-                project.rootDir,
+                project.projectDir,
                 'docker', 'container', 'stop', 'gitlab.taruts.net'
             )
         }
@@ -219,7 +221,7 @@ tasks.register('removeContainer') {
     it.doLast {
         if (containerExists()) {
             ProcessRunner.runProcess(
-                project.rootDir,
+                project.projectDir,
                 'docker', 'container', 'rm', 'gitlab.taruts.net'
             )
         }
@@ -230,7 +232,7 @@ tasks.register('removeContainerData') {
     it.group = 'gitlab-container'
     it.shouldRunAfter('removeContainer')
     it.doLast {
-        File directory = FileUtils.getFile(project.rootDir, 'home')
+        File directory = FileUtils.getFile(project.projectDir, 'home')
         if (!directory.exists()) {
             return
         }

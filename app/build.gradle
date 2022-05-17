@@ -124,7 +124,7 @@ tasks.register('initDynamicLocal') {
     it.doLast {
         // Вычисляем, куда мы будем клонироваться
         File dynamicLocalDirectory = java.nio.file.Path
-            .of(project.rootDir.path, '../dynamic-local')
+            .of(rootProject.projectDir.path, 'dynamic-local')
             .toAbsolutePath()
             .normalize()
             .toFile()
@@ -292,11 +292,11 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
 
         // Определяем что клонировать. Вычисляем URL репозитория для клонирования, отталкиваясь от URL текущего репозитория
         String startingPointRepoPostfix = 'main'
-        String startingPointRepoUrl = ProcessRunner.runProcess(project.rootDir, 'git', 'remote', 'get-url', 'origin')
+        String startingPointRepoUrl = ProcessRunner.runProcess(project.projectDir, 'git', 'remote', 'get-url', 'origin')
         adjacentRepoUrl = startingPointRepoUrl.replaceAll(/$startingPointRepoPostfix(?=\.git$)/, adjacentRepoPostfix)
 
         // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
-        sourceDir = FileUtils.getFile(project.rootDir.parent, adjacentRepoPostfix)
+        sourceDir = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
 
         this.description = "Clones $adjacentRepoUrl into $sourceDir"
     }
