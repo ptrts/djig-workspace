@@ -148,8 +148,8 @@ tasks.register('initDynamicLocal') {
         GitUtils.clone(dynamicDevRemoteUrlStr, dynamicLocalDirectory)
 
         // Ставим пользователя и его мейл
-        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'config', '--local', 'user.name', 'root')
-        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'config', '--local', 'user.email', 'root@gmail.com')
+        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'config', '--local', 'user.name', 'user')
+        ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'config', '--local', 'user.email', 'user@mail.com')
 
         // Изменяем имя проекта и коммитим это
         File settingsGradleFile = FileUtils.getFile(dynamicLocalDirectory, 'settings.gradle')
