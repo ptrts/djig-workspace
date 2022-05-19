@@ -105,6 +105,9 @@ tasks.register('createContainer') {
             .compress(true)
             .baseUrl(gitlabUri.toString())
 
+        // reactor-netty-http spams warnings when throwing exceptions
+        logging.levelInternal = LogLevel.ERROR
+
         while (true) {
             try {
                 try {
