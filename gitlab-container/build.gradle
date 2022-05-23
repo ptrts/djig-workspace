@@ -49,23 +49,7 @@ tasks.register('createContainer') {
     it.doLast {
         String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
 
-        // todo Вынести в общее место
-
-        String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
-        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local.properties')
-        Properties localGitlabProperties = new Properties()
-        try (Reader reader = localGitlabPropertiesFile.newReader()) {
-            localGitlabProperties.load(reader)
-        }
-
-        String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
-        String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
-        String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
-
-        URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
-        URI gitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
-
-        // todo ^^^ Вынести в общее место
+        GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-local.properties')
 
         List<String> command = new ArrayList<>()
 
@@ -75,7 +59,7 @@ tasks.register('createContainer') {
                 '--detach',
                 '--hostname', 'gitlab.domain.name.placeholder',
                 '--publish', '9522:22',
-                '--publish', "${gitlabUri.port}:80".toString(),
+                '--publish', "${gitLabParameters.gitlabUri.port}:80".toString(),
                 '--publish', '9543:443',
                 '--name', 'gitlab.taruts.net',
                 '--restart', 'always',
@@ -126,7 +110,6 @@ tasks.register('createContainer') {
                 }
             } catch (PrematureCloseException | ConnectException ignored) {
             } catch (Exception e) {
-                println(">>> ${e.class.name}")
                 throw e
             }
         }
@@ -146,37 +129,21 @@ tasks.register('createUser') {
             .findAny()
             .orElseThrow(() -> new RuntimeException('Password not found'))
 
-        // todo Вынести в общее место
+        GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-local.properties')
 
-        String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
-        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local.properties')
-        Properties localGitlabProperties = new Properties()
-        try (Reader reader = localGitlabPropertiesFile.newReader()) {
-            localGitlabProperties.load(reader)
-        }
-
-        String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
-        String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
-        String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
-
-        URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
-        URI gitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
-
-        // todo ^^^ Вынести в общее место
-
-        GitLabApi gitLabApi = GitLabApi.oauth2Login(gitlabUri.toString(), 'root', password, true)
+        GitLabApi gitLabApi = GitLabApi.oauth2Login(gitLabParameters.gitlabUri.toString(), 'root', password, true)
 
         User user = new User()
-        user.username = propertiesUsername
-        user.name = propertiesUsername
-        user.email = "${propertiesUsername}@mail.com"
+        user.username = gitLabParameters.username
+        user.name = gitLabParameters.username
+        user.email = "${gitLabParameters.username}@mail.com"
         user.isAdmin = true
         user.canCreateGroup = true
         user.projectsLimit = 0
         user.sharedRunnersMinutesLimit = 0
         user.skipConfirmation = true
 
-        gitLabApi.userApi.createUser(user, propertiesPassword, false)
+        gitLabApi.userApi.createUser(user, gitLabParameters.password, false)
     }
 }
 

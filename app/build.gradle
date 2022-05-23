@@ -129,18 +129,11 @@ tasks.register('initDynamicLocal') {
         }
         FileUtils.forceMkdir(dynamicLocalDirectory)
 
-        String resourcesDir = project.sourceSets.main.resources.srcDirs.first()
-
         // Из основного проекта берем URL репозитория dynamic-dev
-        File dynamicDevPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-dev.properties')
-        def dynamicDevProperties = new Properties()
-        try (Reader reader = dynamicDevPropertiesFile.newReader()) {
-            dynamicDevProperties.load(reader)
-        }
-        String dynamicDevRemoteUrlStr = dynamicDevProperties.get('dynamic-impl.git-repository.url')
+        GitLabParameters devGitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-dev.properties')
 
         // Клонируемся в каталог build/dynamic-impl-dev
-        GitUtils.clone(dynamicDevRemoteUrlStr, dynamicLocalDirectory)
+        GitUtils.clone(devGitLabParameters.projectUri.toString(), dynamicLocalDirectory)
 
         // Ставим пользователя и его мейл
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'config', '--local', 'user.name', 'user')
@@ -152,25 +145,19 @@ tasks.register('initDynamicLocal') {
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'add', '*')
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'commit', '-m', 'Changing project name to dynamic-local')
 
-        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local.properties')
-        def localGitlabProperties = new Properties()
-        try (Reader reader = localGitlabPropertiesFile.newReader()) {
-            localGitlabProperties.load(reader)
-        }
-
-        String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
-        String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
-        String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
-
-        URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
-        URI propertiesGitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
+        GitLabParameters localGitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-local.properties')
 
         // Create a GitLabApi instance to communicate with your GitLab server
-        GitLabApi gitLabApi = GitLabApi.oauth2Login(propertiesGitlabUri.toString(), propertiesUsername, propertiesPassword, true)
+        GitLabApi gitLabApi = GitLabApi.oauth2Login(
+            localGitLabParameters.gitlabUri.toString(),
+            localGitLabParameters.username,
+            localGitLabParameters.password,
+            true
+        )
 
         List<String> pathParts = Arrays
             .stream(
-                propertiesProjectUri.path.split('/')
+                localGitLabParameters.projectUri.path.split('/')
             )
             .filter(StringUtils::isNotBlank)
             .toList()
@@ -234,9 +221,9 @@ tasks.register('initDynamicLocal') {
         // Добавляем логин и пароль. Меняем хост и порт
         remoteUri = new URI(
             remoteUri.scheme,
-            "$propertiesUsername:$propertiesPassword",
-            propertiesGitlabUri.host,
-            propertiesGitlabUri.port,
+            "${localGitLabParameters.username}:${localGitLabParameters.password}",
+            localGitLabParameters.gitlabUri.host,
+            localGitLabParameters.gitlabUri.port,
             remoteUri.path,
             null,
             null
