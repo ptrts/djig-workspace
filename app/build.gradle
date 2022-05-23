@@ -106,11 +106,6 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-enum LocalDynamicGitRepoRemoteType {
-    DIRECTORY,
-    GITLAB,
-}
-
 tasks.register('initDynamicLocal') {
     it.group = 'gitlab-container'
 
@@ -157,116 +152,97 @@ tasks.register('initDynamicLocal') {
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'add', '*')
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'commit', '-m', 'Changing project name to dynamic-local')
 
-        // todo Либо выделить отдельную таску с гит репозиторием-файловым каталогом,
-        //      либо вообще убрать такое понятие как гит репозиторий-файловый каталог
-        LocalDynamicGitRepoRemoteType remoteType = LocalDynamicGitRepoRemoteType.GITLAB
-
-        String remoteUrlStr
-        if (remoteType == LocalDynamicGitRepoRemoteType.DIRECTORY) {
-            // В каталоге, где должен быть remote, создаем репозиторий
-            File remoteDirectory = FileUtils.getFile(dynamicLocalDirectory, 'remote')
-            FileUtils.forceMkdir(remoteDirectory)
-            ProcessRunner.runProcess(remoteDirectory, 'git', 'init', '--bare')
-
-            // Получаем URL местного удаленного репозитория
-            remoteUrlStr = "file://$remoteDirectory"
-        } else if (remoteType == LocalDynamicGitRepoRemoteType.GITLAB) {
-
-            File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local-gitlab.properties')
-            def localGitlabProperties = new Properties()
-            try (Reader reader = localGitlabPropertiesFile.newReader()) {
-                localGitlabProperties.load(reader)
-            }
-
-            String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
-            String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
-            String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
-
-            URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
-            URI propertiesGitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
-
-            // Create a GitLabApi instance to communicate with your GitLab server
-            GitLabApi gitLabApi = GitLabApi.oauth2Login(propertiesGitlabUri.toString(), propertiesUsername, propertiesPassword, true)
-
-            List<String> pathParts = Arrays
-                .stream(
-                    propertiesProjectUri.path.split('/')
-                )
-                .filter(StringUtils::isNotBlank)
-                .toList()
-            String projectFileName = pathParts.get(pathParts.size() - 1)
-
-            int dotIndex = projectFileName.lastIndexOf('.')
-            String projectName = dotIndex == -1
-                ? projectFileName
-                : projectFileName.substring(0, dotIndex)
-
-            String groupPath = String.join('/', pathParts.subList(0, pathParts.size() - 1))
-
-            // Ищем или создаем группу проектов
-            Group group = gitLabApi.getGroupApi().getOptionalGroup(groupPath)
-                .orElseGet {
-                    gitLabApi.getGroupApi().addGroup('Dynamic Java code stored in Git', groupPath)
-                }
-
-            org.gitlab4j.api.models.Project gitlabProject
-
-            // Ищем или создаем проект
-            gitLabApi.getProjectApi().getOptionalProject(groupPath, projectName)
-                .ifPresent {
-                    gitLabApi.getProjectApi().deleteProject(it.id)
-                    println('Waiting for project deletion...')
-                    int i = 60
-                    for (; i > 0; i--) {
-                        gitlabProject = gitLabApi.getProjectApi().getOptionalProject(groupPath, projectName).orElse(null)
-                        if (gitlabProject == null) {
-                            break
-                        }
-                        println("$i...")
-                        Thread.sleep(1000)
-                    }
-                    if (i == 0) {
-                        throw new RuntimeException("Could not delete project $projectName")
-                    }
-                }
-
-            for (i in 100..1) {
-                try {
-                    gitlabProject = gitLabApi.getProjectApi().createProject(group.id, projectName)
-                    break
-                } catch (GitLabApiException e) {
-                    if (i == 1) {
-                        throw e
-                    } else {
-                        e.validationErrors.forEach { key, value ->
-                            println("Gitlab project creation error: attempt $i, key = ${key}, value = ${value}")
-                        }
-                        Thread.sleep(1000)
-                    }
-                }
-            }
-
-            assert gitlabProject != null
-
-            remoteUrlStr = gitlabProject.getHttpUrlToRepo()
-
-            URI remoteUri = new URI(remoteUrlStr)
-
-            // Добавляем логин и пароль. Меняем хост и порт
-            remoteUri = new URI(
-                remoteUri.scheme,
-                "$propertiesUsername:$propertiesPassword",
-                propertiesGitlabUri.host,
-                propertiesGitlabUri.port,
-                remoteUri.path,
-                null,
-                null
-            )
-
-            remoteUrlStr = remoteUri.toString()
-        } else {
-            throw new IllegalStateException()
+        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local.properties')
+        def localGitlabProperties = new Properties()
+        try (Reader reader = localGitlabPropertiesFile.newReader()) {
+            localGitlabProperties.load(reader)
         }
+
+        String propertiesProjectUrlStr = localGitlabProperties.getProperty('dynamic-impl.git-repository.url')
+        String propertiesUsername = localGitlabProperties.getProperty('dynamic-impl.git-repository.username')
+        String propertiesPassword = localGitlabProperties.getProperty('dynamic-impl.git-repository.password')
+
+        URI propertiesProjectUri = new URI(propertiesProjectUrlStr)
+        URI propertiesGitlabUri = new URI(propertiesProjectUri.scheme, propertiesProjectUri.authority, null, null, null)
+
+        // Create a GitLabApi instance to communicate with your GitLab server
+        GitLabApi gitLabApi = GitLabApi.oauth2Login(propertiesGitlabUri.toString(), propertiesUsername, propertiesPassword, true)
+
+        List<String> pathParts = Arrays
+            .stream(
+                propertiesProjectUri.path.split('/')
+            )
+            .filter(StringUtils::isNotBlank)
+            .toList()
+        String projectFileName = pathParts.get(pathParts.size() - 1)
+
+        int dotIndex = projectFileName.lastIndexOf('.')
+        String projectName = dotIndex == -1
+            ? projectFileName
+            : projectFileName.substring(0, dotIndex)
+
+        String groupPath = String.join('/', pathParts.subList(0, pathParts.size() - 1))
+
+        // Ищем или создаем группу проектов
+        Group group = gitLabApi.getGroupApi().getOptionalGroup(groupPath)
+            .orElseGet {
+                gitLabApi.getGroupApi().addGroup('Dynamic Java code stored in Git', groupPath)
+            }
+
+        org.gitlab4j.api.models.Project gitlabProject
+
+        // Ищем или создаем проект
+        gitLabApi.getProjectApi().getOptionalProject(groupPath, projectName)
+            .ifPresent {
+                gitLabApi.getProjectApi().deleteProject(it.id)
+                println('Waiting for project deletion...')
+                int i = 60
+                for (; i > 0; i--) {
+                    gitlabProject = gitLabApi.getProjectApi().getOptionalProject(groupPath, projectName).orElse(null)
+                    if (gitlabProject == null) {
+                        break
+                    }
+                    println("$i...")
+                    Thread.sleep(1000)
+                }
+                if (i == 0) {
+                    throw new RuntimeException("Could not delete project $projectName")
+                }
+            }
+
+        for (i in 100..1) {
+            try {
+                gitlabProject = gitLabApi.getProjectApi().createProject(group.id, projectName)
+                break
+            } catch (GitLabApiException e) {
+                if (i == 1) {
+                    throw e
+                } else {
+                    e.validationErrors.forEach { key, value ->
+                        println("Gitlab project creation error: attempt $i, key = ${key}, value = ${value}")
+                    }
+                    Thread.sleep(1000)
+                }
+            }
+        }
+
+        assert gitlabProject != null
+
+        String remoteUrlStr = gitlabProject.getHttpUrlToRepo()
+        URI remoteUri = new URI(remoteUrlStr)
+
+        // Добавляем логин и пароль. Меняем хост и порт
+        remoteUri = new URI(
+            remoteUri.scheme,
+            "$propertiesUsername:$propertiesPassword",
+            propertiesGitlabUri.host,
+            propertiesGitlabUri.port,
+            remoteUri.path,
+            null,
+            null
+        )
+
+        remoteUrlStr = remoteUri.toString()
 
         // Перенаправляем remote origin на наш новый репозиторий
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'remote', 'set-url', 'origin', remoteUrlStr)

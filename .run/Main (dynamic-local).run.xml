@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
-    <configuration default="false" name="Main (dynamic-local-gitlab)" type="SpringBootApplicationConfigurationType"
+    <configuration default="false" name="Main (dynamic-local)" type="SpringBootApplicationConfigurationType"
                    factoryName="Spring Boot">
-        <option name="ACTIVE_PROFILES" value="dev, dynamic-local-gitlab"/>
-        <module name="app.main"/>
+        <option name="ACTIVE_PROFILES" value="dev, dynamic-local"/>
+        <module name="dynamic-java-code-stored-in-git.app.main"/>
         <option name="SPRING_BOOT_MAIN_CLASS" value="app.main.Main"/>
         <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$/working-directory"/>
         <method v="2">

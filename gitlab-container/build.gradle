@@ -52,7 +52,7 @@ tasks.register('createContainer') {
         // todo Вынести в общее место
 
         String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
-        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local-gitlab.properties')
+        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local.properties')
         Properties localGitlabProperties = new Properties()
         try (Reader reader = localGitlabPropertiesFile.newReader()) {
             localGitlabProperties.load(reader)
@@ -149,7 +149,7 @@ tasks.register('createUser') {
         // todo Вынести в общее место
 
         String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
-        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local-gitlab.properties')
+        File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, 'application-dynamic-local.properties')
         Properties localGitlabProperties = new Properties()
         try (Reader reader = localGitlabPropertiesFile.newReader()) {
             localGitlabProperties.load(reader)
