@@ -112,7 +112,7 @@ enum LocalDynamicGitRepoRemoteType {
 }
 
 tasks.register('initDynamicLocal') {
-    it.group = 'other-git-repos'
+    it.group = 'gitlab-container'
 
     it.description = '''
     Clones dynamic-dev to dynamic-local, 
@@ -309,3 +309,12 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
 
 tasks.register('initDynamicApi', InitAdjacentGitRepoTask, 'dynamic-api')
 tasks.register('initDynamicDev', InitAdjacentGitRepoTask, 'dynamic-dev')
+
+tasks.register('initLocalGitLab') {
+    it.group = 'gitlab-container'
+    it.dependsOn(':gitlab-container:createAll', 'initDynamicLocal')
+}
+
+initDynamicLocal.configure {
+    it.shouldRunAfter(':gitlab-container:createAll')
+}
