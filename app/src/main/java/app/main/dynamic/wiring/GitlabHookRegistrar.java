@@ -9,6 +9,7 @@ import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
 import org.gitlab4j.api.models.Setting;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.reactive.context.ReactiveWebServerApplicationContext;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -30,6 +31,9 @@ public class GitlabHookRegistrar implements SmartLifecycle {
 
     @Autowired
     private DynamicImplProperties dynamicImplProperties;
+
+    @Autowired
+    private ReactiveWebServerApplicationContext reactiveWebServerApplicationContext;
 
     @Override
     @SneakyThrows
@@ -161,12 +165,16 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     }
 
     private URI getHookUri() {
-        String hookBaseUrl = dynamicImplProperties.getGitRepository().getHook().getBaseUrl();
-        if (StringUtils.isBlank(hookBaseUrl)) {
+        String host = dynamicImplProperties.getGitRepository().getHook().getHost();
+        if (StringUtils.isBlank(host)) {
             return null;
         }
+        String protocol = dynamicImplProperties.getGitRepository().getHook().getProtocol();
         return UriComponentsBuilder
-                .fromHttpUrl(hookBaseUrl)
+                .newInstance()
+                .scheme(protocol)
+                .host(host)
+                .port(reactiveWebServerApplicationContext.getWebServer().getPort())
                 .replacePath("refresh")
                 .build()
                 .toUri();

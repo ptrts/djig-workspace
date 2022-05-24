@@ -31,8 +31,11 @@ public class DynamicImplProperties {
         @Component
         @Getter
         public static class Hook {
-            @Value("${dynamic-impl.git-repository.hook.base-url:}")
-            String baseUrl;
+            @Value("${dynamic-impl.git-repository.hook.protocol:}")
+            String protocol;
+
+            @Value("${dynamic-impl.git-repository.hook.host:}")
+            String host;
 
             @Value("${dynamic-impl.git-repository.hook.ssl-verification:false}")
             boolean sslVerification;
