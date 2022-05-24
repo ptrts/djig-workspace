@@ -2,6 +2,7 @@ package app.main.dynamic.wiring;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Project;
@@ -35,14 +36,17 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     public void start() {
 
         withProject((gitLabApi, project) -> {
+            URI hookUri = getHookUri();
+            if (hookUri == null) {
+                return;
+            }
+
             try {
                 gitLabApi.getApplicationSettingsApi().updateApplicationSetting(Setting.ALLOW_LOCAL_REQUESTS_FROM_SYSTEM_HOOKS, true);
                 gitLabApi.getApplicationSettingsApi().updateApplicationSetting(Setting.ALLOW_LOCAL_REQUESTS_FROM_WEB_HOOKS_AND_SERVICES, true);
             } catch (GitLabApiException e) {
                 throw new RuntimeException(e);
             }
-
-            URI hookUri = getHookUri();
 
             DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
 
@@ -86,7 +90,9 @@ public class GitlabHookRegistrar implements SmartLifecycle {
 
         withProject((gitLabApi, project) -> {
             URI hookUri = getHookUri();
-            deleteHooks(gitLabApi, project, hookUri);
+            if (hookUri != null) {
+                deleteHooks(gitLabApi, project, hookUri);
+            }
         });
 
         running = false;
@@ -152,8 +158,12 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     }
 
     private URI getHookUri() {
+        String hookBaseUrl = dynamicImplProperties.getGitRepository().getHook().getBaseUrl();
+        if (StringUtils.isBlank(hookBaseUrl)) {
+            return null;
+        }
         return UriComponentsBuilder
-                .fromHttpUrl(dynamicImplProperties.getGitRepository().getHook().getBaseUrl())
+                .fromHttpUrl(hookBaseUrl)
                 .replacePath("refresh")
                 .build()
                 .toUri();
