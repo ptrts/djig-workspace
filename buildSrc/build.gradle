@@ -1,6 +1,11 @@
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        name = 's3MavenRepo'
+        url = 's3://maven.taruts.net'
+        credentials(AwsCredentials)
+    }
 }
 
 dependencies {

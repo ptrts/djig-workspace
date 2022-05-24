@@ -14,12 +14,9 @@ buildscript {
         mavenLocal()
         mavenCentral()
         maven {
-            name = 's3Private'
+            name = 's3MavenRepo'
             url = 's3://maven.taruts.net'
-            credentials(AwsCredentials) {
-                accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
-                secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
-            }
+            credentials(AwsCredentials)
         }
     }
     dependencies {
@@ -52,20 +49,9 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name = 's3Public'
-        url = 's3://public.maven.taruts.net'
-        credentials(AwsCredentials) {
-            accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
-            secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
-        }
-    }
-    maven {
-        name = 's3Private'
+        name = 's3MavenRepo'
         url = 's3://maven.taruts.net'
-        credentials(AwsCredentials) {
-            accessKey = 'YCAJEr8kG2QLz00ovJC3oeXiQ'
-            secretKey = 'YCMRIR338p1YWdI1089MciPfgEc6_lCi2121XaZM'
-        }
+        credentials(AwsCredentials)
     }
     mavenCentral()
 }
