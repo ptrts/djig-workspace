@@ -73,7 +73,9 @@ public class GradleProjectApplicationContextContainer {
 
     @SneakyThrows
     public void init() {
-        FileUtils.forceDelete(dynamicImplSourceDirectory);
+        if (dynamicImplSourceDirectory.exists()) {
+            FileUtils.forceDelete(dynamicImplSourceDirectory);
+        }
         refresh();
     }
 
