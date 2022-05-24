@@ -12,10 +12,14 @@ import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.retry.backoff.FixedBackOffPolicy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.taruts.gitUtils.GitUtils;
 import org.taruts.gradleUtils.GradleBuilder;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
@@ -28,25 +32,34 @@ import java.util.stream.Stream;
 @Slf4j
 public class GradleProjectApplicationContext extends AnnotationConfigApplicationContext {
 
+    private final RetryTemplate cloneRetryTemplate = new RetryTemplate();
+
     public GradleProjectApplicationContext(
             ApplicationContext parent,
-            String url,
+            String urlArg,
             String username,
             String password,
             File projectSourceDirectory
     ) {
         boolean directoryUrl = Stream.of(
                 "http:", "https:", "file:", "git@"
-        ).noneMatch(url::startsWith);
+        ).noneMatch(urlArg::startsWith);
 
+        String url;
         if (directoryUrl) {
             // Во-первых, ко всем файловым URL без file:// в начале мы будем добавлять file://
             // Это нужно для того, чтобы клонирование осуществлялось не копированием файлов, а тем же самым кодом в Git, который используется для сетевых URL
             // Соответственно, здесь мы также должны делать из относительных путей абсолютные
-            url = "file://" + Path.of(url).toAbsolutePath().normalize();
+            url = "file://" + Path.of(urlArg).toAbsolutePath().normalize();
+        } else {
+            url = urlArg;
         }
 
-        GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
+        cloneRetryTemplate.execute(retryContext -> {
+            GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
+            return null;
+        });
+
         GradleBuilder.buildGradleProject(projectSourceDirectory);
 
         File classesDirectory = FileUtils.getFile(projectSourceDirectory, "build/classes/java/main");
@@ -80,6 +93,17 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         // Scan the root package of the project
         String rootPackageName = getRootPackageName(classesDirectory);
         scan(rootPackageName);
+    }
+
+    @PostConstruct
+    private void init() {
+        FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
+        backOffPolicy.setBackOffPeriod(0L);
+        cloneRetryTemplate.setBackOffPolicy(backOffPolicy);
+
+        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
+        retryPolicy.setMaxAttempts(5);
+        cloneRetryTemplate.setRetryPolicy(retryPolicy);
     }
 
     private void tweakEnvironment(ConfigurableEnvironment environment, ClassLoader classLoader) {
