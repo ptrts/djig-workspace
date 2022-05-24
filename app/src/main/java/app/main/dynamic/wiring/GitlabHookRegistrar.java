@@ -35,11 +35,12 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     @SneakyThrows
     public void start() {
 
+        URI hookUri = getHookUri();
+        if (hookUri == null) {
+            return;
+        }
+
         withProject((gitLabApi, project) -> {
-            URI hookUri = getHookUri();
-            if (hookUri == null) {
-                return;
-            }
 
             try {
                 gitLabApi.getApplicationSettingsApi().updateApplicationSetting(Setting.ALLOW_LOCAL_REQUESTS_FROM_SYSTEM_HOOKS, true);
@@ -88,11 +89,13 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     @Override
     public void stop() {
 
+        URI hookUri = getHookUri();
+        if (hookUri == null) {
+            return;
+        }
+
         withProject((gitLabApi, project) -> {
-            URI hookUri = getHookUri();
-            if (hookUri != null) {
-                deleteHooks(gitLabApi, project, hookUri);
-            }
+            deleteHooks(gitLabApi, project, hookUri);
         });
 
         running = false;
