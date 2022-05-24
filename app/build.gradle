@@ -68,6 +68,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
+    // Spring Retry
+    implementation 'org.springframework:spring-aspects'
     implementation 'org.springframework.retry:spring-retry:1.2.5.RELEASE'
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
