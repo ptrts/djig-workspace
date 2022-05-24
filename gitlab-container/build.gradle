@@ -49,7 +49,7 @@ tasks.register('createContainer') {
     it.doLast {
         String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
 
-        GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-local.properties')
+        GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters(project, 'application-dynamic-local.properties')
 
         List<String> command = new ArrayList<>()
 
@@ -87,7 +87,7 @@ tasks.register('createContainer') {
         HttpClient httpClient = HttpClient
             .create()
             .compress(true)
-            .baseUrl(gitlabUri.toString())
+            .baseUrl(gitLabParameters.gitlabUri.toString())
 
         // reactor-netty-http spams warnings when throwing exceptions
         logging.levelInternal = LogLevel.ERROR
@@ -129,7 +129,7 @@ tasks.register('createUser') {
             .findAny()
             .orElseThrow(() -> new RuntimeException('Password not found'))
 
-        GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-local.properties')
+        GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters(project, 'application-dynamic-local.properties')
 
         GitLabApi gitLabApi = GitLabApi.oauth2Login(gitLabParameters.gitlabUri.toString(), 'root', password, true)
 

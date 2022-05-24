@@ -132,7 +132,7 @@ tasks.register('initDynamicLocal') {
         FileUtils.forceMkdir(dynamicLocalDirectory)
 
         // Из основного проекта берем URL репозитория dynamic-dev
-        GitLabParameters devGitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-dev.properties')
+        GitLabParameters devGitLabParameters = GitLabParameters.getGitLabParameters(project, 'application-dynamic-dev.properties')
 
         // Клонируемся в каталог build/dynamic-impl-dev
         GitUtils.clone(devGitLabParameters.projectUri.toString(), dynamicLocalDirectory)
@@ -147,7 +147,7 @@ tasks.register('initDynamicLocal') {
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'add', '*')
         ProcessRunner.runProcess(dynamicLocalDirectory, 'git', 'commit', '-m', 'Changing project name to dynamic-local')
 
-        GitLabParameters localGitLabParameters = GitLabParameters.getGitLabParameters('application-dynamic-local.properties')
+        GitLabParameters localGitLabParameters = GitLabParameters.getGitLabParameters(project, 'application-dynamic-local.properties')
 
         // Create a GitLabApi instance to communicate with your GitLab server
         GitLabApi gitLabApi = GitLabApi.oauth2Login(

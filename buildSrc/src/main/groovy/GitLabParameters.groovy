@@ -1,4 +1,5 @@
 import org.apache.commons.io.FileUtils
+import org.gradle.api.Project
 
 class GitLabParameters {
     URI gitlabUri
@@ -6,8 +7,8 @@ class GitLabParameters {
     String username
     String password
 
-    static GitLabParameters getGitLabParameters(String propertiesResourcePath) {
-        String resourcesDir = project(':app').sourceSets.main.resources.srcDirs.first()
+    static GitLabParameters getGitLabParameters(Project project, String propertiesResourcePath) {
+        String resourcesDir = project.project(':app').sourceSets.main.resources.srcDirs.first()
         File localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, propertiesResourcePath)
         Properties localGitlabProperties = new Properties()
         try (Reader reader = localGitlabPropertiesFile.newReader()) {
