@@ -97,13 +97,11 @@ tasks.named('test') {
 }
 
 tasks.register('initDynamicLocal') {
-    it.group = 'gitlab-container'
+    it.group = 'app'
 
     it.description = '''
-    Clones dynamic-dev to dynamic-local, 
-    detaches it from the dynamic-dev remote, 
-    then linkes it with a newly created remote dynamic-local/remote
-    which is inside.
+    Creates a fork of dynamic-dev in the local GitLab
+    and clones it into the dynamic-local project subdirectory
     '''.stripIndent()
 
     it.doLast {
@@ -241,7 +239,7 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
     InitAdjacentGitRepoTask(String adjacentRepoPostfix) {
         this.adjacentRepoPostfix = adjacentRepoPostfix
 
-        this.group = 'other-git-repos'
+        this.group = 'app'
 
         // Определяем что клонировать. Вычисляем URL репозитория для клонирования, отталкиваясь от URL текущего репозитория
         String startingPointRepoPostfix = 'main'
@@ -251,7 +249,7 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
         // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
         sourceDir = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
 
-        this.description = "Clones $adjacentRepoUrl into $sourceDir"
+        this.description = "Clones the $adjacentRepoPostfix project into the project subdirectory with the same name"
     }
 
     @TaskAction
@@ -264,10 +262,36 @@ tasks.register('initDynamicApi', InitAdjacentGitRepoTask, 'dynamic-api')
 tasks.register('initDynamicDev', InitAdjacentGitRepoTask, 'dynamic-dev')
 
 tasks.register('initLocalGitLab') {
-    it.group = 'gitlab-container'
+    it.group = 'app'
+
+    it.description = '''
+    Creates a local GitLab Docker container, 
+    creates in there a project which is a fork of dynamic-dev 
+    and clones it into the dynamic-local project subdirectory
+    '''.stripIndent()
+
     it.dependsOn(':gitlab-container:createAll', 'initDynamicLocal')
 }
 
 initDynamicLocal.configure {
     it.shouldRunAfter(':gitlab-container:createAll')
+}
+
+tasks.register('init') {
+    it.group = 'app'
+
+    it.description = '''
+    Initializes everything for the project. 
+    This is an aggregate task for initLocalGitLab, initDynamicApi and initDynamicDev
+    '''.stripIndent()
+
+    it.dependsOn('initLocalGitLab', 'initDynamicApi', 'initDynamicDev')
+}
+
+initDynamicApi.configure {
+    it.shouldRunAfter('initLocalGitLab')
+}
+
+initDynamicDev.configure {
+    it.shouldRunAfter('initLocalGitLab')
 }
