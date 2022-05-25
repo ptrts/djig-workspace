@@ -36,6 +36,7 @@ buildscript {
         classpath 'we:git-utils:001'
         classpath 'javax.inject:javax.inject:1'
         classpath 'org.gitlab4j:gitlab4j-api:5.0.1'
+        classpath 'io.netty:netty-transport-native-unix-common:4.1.74.Final'
     }
 }
 
@@ -105,8 +106,9 @@ tasks.register('createContainer') {
                     // Unwrapping the cause if exists
                     throw e.cause == null ? e : e.cause
                 }
-            } catch (PrematureCloseException | ConnectException ignored) {
+            } catch (PrematureCloseException | ConnectException | io.netty.channel.unix.Errors.NativeIoException ignored) {
             } catch (Exception e) {
+                logger.error(">>> ${e.get}")
                 throw e
             }
         }
