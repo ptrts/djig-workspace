@@ -131,8 +131,11 @@ tasks.register('createContainer') {
 tasks.register('createUser') {
     it.group = 'gitlab-container'
     it.doLast {
-        File file = FileUtils.getFile(project.projectDir, 'home/config/initial_root_password')
-        List<String> lines = FileUtils.readLines(file, 'UTF-8')
+
+        String fileContents = runLinuxShellCommandInDocker(project, "cat ${MountPoints.CONFIG}/initial_root_password")
+
+        List<String> lines = fileContents.readLines()
+
         String password = lines
             .stream()
             .map(line -> line =~ /Password:\s?(.+)/)
@@ -218,6 +221,24 @@ tasks.register('removeContainer') {
     }
 }
 
+static String runLinuxShellCommandInDocker(Project project, String shellCommand) {
+    List<String> command = new ArrayList<>()
+    command.addAll(
+        List.of(
+            'docker', 'run', '--rm'
+        )
+    )
+    addBindMounts(command, project)
+
+    command.add('alpine:3.16.0')
+
+    command.addAll(List.of(
+        'sh', '-c', "\"$shellCommand\"".toString()
+    ))
+
+    return ProcessRunner.runProcess(project.projectDir, command)
+}
+
 tasks.register('removeContainerData') {
     it.group = 'gitlab-container'
     it.shouldRunAfter('removeContainer')
@@ -226,16 +247,6 @@ tasks.register('removeContainerData') {
         if (!homeHostDirectory.exists()) {
             return
         }
-
-        List<String> command = new ArrayList<>()
-        command.addAll(
-            List.of(
-                'docker', 'run'
-            )
-        )
-        addBindMounts(command, project)
-
-        command.add('alpine:latest')
 
         String directoryWildcards = Stream
             .of(MountPoints.CONFIG, MountPoints.LOGS, MountPoints.DATA)
@@ -248,14 +259,8 @@ tasks.register('removeContainerData') {
                 return "$visibleFilesWildcard $hiddenFilesWildcard"
             }
             .collect(Collectors.joining(' '))
-
         String shellCommand = "rm -rf $directoryWildcards"
-
-        command.addAll(List.of(
-            'sh', '-c', "\"$shellCommand\"".toString()
-        ))
-
-        ProcessRunner.runProcess(project.projectDir, command)
+        runLinuxShellCommandInDocker(project, shellCommand)
 
         FileUtils.deleteDirectory(homeHostDirectory)
     }
