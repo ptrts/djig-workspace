@@ -263,7 +263,7 @@ tasks.register('removeContainerData') {
             }
             .collect(Collectors.joining(' '))
         String shellCommand = "rm -rf $directoryWildcards"
-        runLinuxShellCommandInDocker(project, true, shellCommand)
+        runLinuxShellCommandInDocker(project, false, shellCommand)
 
         FileUtils.deleteDirectory(homeHostDirectory)
     }
