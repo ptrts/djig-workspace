@@ -229,31 +229,33 @@ tasks.register('initDynamicLocal') {
 
 abstract class InitAdjacentGitRepoTask extends DefaultTask {
 
+    private static final String STARTING_POINT_REPO_POSTFIX = 'main'
+
     @Input
     final String adjacentRepoPostfix
-
-    private String adjacentRepoUrl
-    private File sourceDir
 
     @Inject
     InitAdjacentGitRepoTask(String adjacentRepoPostfix) {
         this.adjacentRepoPostfix = adjacentRepoPostfix
 
         this.group = 'app'
-
-        // Определяем что клонировать. Вычисляем URL репозитория для клонирования, отталкиваясь от URL текущего репозитория
-        String startingPointRepoPostfix = 'main'
-        String startingPointRepoUrl = ProcessRunner.runProcess(project.projectDir, 'git', 'remote', 'get-url', 'origin')
-        adjacentRepoUrl = startingPointRepoUrl.replaceAll(/$startingPointRepoPostfix(?=\.git$)/, adjacentRepoPostfix)
-
-        // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
-        sourceDir = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
-
         this.description = "Clones the $adjacentRepoPostfix project into the project subdirectory with the same name"
     }
 
     @TaskAction
     def action() {
+        // Определяем что клонировать. Вычисляем URL репозитория для клонирования, отталкиваясь от URL текущего репозитория
+        String startingPointRepoUrl = ProcessRunner.runProcess(project.projectDir, 'git', 'remote', 'get-url', 'origin')
+
+        // В URL нашего Git репозитория, фрагмент STARTING_POINT_REPO_POSTFIX в конце, перед ".git" заменяем на другое
+        String adjacentRepoUrl = startingPointRepoUrl.replaceAll(
+            /$STARTING_POINT_REPO_POSTFIX(?=\.git$)/,
+            adjacentRepoPostfix
+        )
+
+        // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
+        String sourceDir = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
+
         GitUtils.forceClone(adjacentRepoUrl, sourceDir)
     }
 }
