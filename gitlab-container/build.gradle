@@ -162,6 +162,7 @@ tasks.register('startContainer') {
 }
 
 boolean containerExists() {
+    println('containerExists')
     String containerId = ProcessRunner.runProcess(
         project.projectDir,
         'docker', 'container', 'ls',
@@ -169,18 +170,25 @@ boolean containerExists() {
         '-a',
         '-f', 'name=gitlab.taruts.net'
     )
+    println("containerId=$containerId")
     return StringUtils.isNotBlank(containerId)
 }
 
 tasks.register('stopContainer') {
     it.group = 'gitlab-container'
     it.doLast {
+        println('stopContainer. Start')
         if (containerExists()) {
-            ProcessRunner.runProcess(
+            println('containerExists() == true')
+
+            String output = ProcessRunner.runProcess(
                 project.projectDir,
                 'docker', 'container', 'stop', 'gitlab.taruts.net'
             )
+
+            println("Docker output: $output")
         }
+        println('stopContainer. End')
     }
 }
 
