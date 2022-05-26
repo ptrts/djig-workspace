@@ -132,7 +132,7 @@ tasks.register('createUser') {
     it.group = 'gitlab-container'
     it.doLast {
 
-        String fileContents = runLinuxShellCommandInDocker(project, "cat ${MountPoints.CONFIG}/initial_root_password")
+        String fileContents = runLinuxShellCommandInDocker(project, false, "cat ${MountPoints.CONFIG}/initial_root_password")
 
         List<String> lines = fileContents.readLines()
 
@@ -221,7 +221,7 @@ tasks.register('removeContainer') {
     }
 }
 
-static String runLinuxShellCommandInDocker(Project project, String shellCommand) {
+static String runLinuxShellCommandInDocker(Project project, boolean inheritIO, String shellCommand) {
     List<String> command = new ArrayList<>()
     command.addAll(
         List.of(
@@ -239,7 +239,7 @@ static String runLinuxShellCommandInDocker(Project project, String shellCommand)
     String commandStr = String.join(' ', command)
     println("commandStr:\n\n$commandStr\n\n")
 
-    return ProcessRunner.runProcess(project.projectDir, command)
+    return ProcessRunner.runProcess(project.projectDir, inheritIO, command)
 }
 
 tasks.register('removeContainerData') {
@@ -263,7 +263,7 @@ tasks.register('removeContainerData') {
             }
             .collect(Collectors.joining(' '))
         String shellCommand = "rm -rf $directoryWildcards"
-        runLinuxShellCommandInDocker(project, shellCommand)
+        runLinuxShellCommandInDocker(project, true, shellCommand)
 
         FileUtils.deleteDirectory(homeHostDirectory)
     }
