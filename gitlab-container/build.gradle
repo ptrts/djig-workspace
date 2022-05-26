@@ -175,20 +175,20 @@ boolean containerExists() {
 }
 
 tasks.register('stopContainer') {
-    it.group = 'gitlab-container'
+    // it.group = 'gitlab-container'
     it.doLast {
-        println('stopContainer. Start')
+        // println('stopContainer. Start')
         if (containerExists()) {
-            println('containerExists() == true')
+            // println('containerExists() == true')
 
             String output = ProcessRunner.runProcess(
                 project.projectDir,
                 'docker', 'container', 'stop', 'gitlab.taruts.net'
             )
 
-            println("Docker output: $output")
+            // println("Docker output: $output")
         }
-        println('stopContainer. End')
+        // println('stopContainer. End')
     }
 }
 
@@ -199,7 +199,7 @@ tasks.register('removeContainer') {
         if (containerExists()) {
             ProcessRunner.runProcess(
                 project.projectDir,
-                'docker', 'container', 'rm', 'gitlab.taruts.net'
+                'docker', 'container', 'rm', '--volumes', 'gitlab.taruts.net'
             )
         }
     }
