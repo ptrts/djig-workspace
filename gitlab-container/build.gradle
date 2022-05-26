@@ -9,12 +9,10 @@ import reactor.netty.http.client.HttpClientResponse
 import reactor.netty.http.client.PrematureCloseException
 import reactor.util.Loggers
 
-import java.nio.file.FileVisitOption
-import java.nio.file.FileVisitResult
-import java.nio.file.Files
-import java.nio.file.attribute.BasicFileAttributes
 import java.time.Duration
 import java.util.regex.Matcher
+import java.util.stream.Collectors
+import java.util.stream.Stream
 
 buildscript {
     repositories {
@@ -40,12 +38,28 @@ buildscript {
     }
 }
 
+class MountPoints {
+    static String CONFIG = '/etc/gitlab'
+    static String LOGS = '/var/log/gitlab'
+    static String DATA = '/var/opt/gitlab'
+}
+
+static def addBindMounts(List<String> command, Project project) {
+    String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
+    command.addAll(
+        List.of(
+            '--volume', "$home/config:${MountPoints.CONFIG}".toString(),
+            '--volume', "$home/logs:${MountPoints.LOGS}".toString(),
+            '--volume', "$home/data:${MountPoints.DATA}".toString(),
+        )
+    )
+}
+
 tasks.register('createContainer') {
     it.group = 'gitlab-container'
     it.timeout = Duration.ofMinutes(15)
     it.dependsOn('removeAll')
     it.doLast {
-        String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
 
         GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters(project, 'application-dynamic-local.properties')
 
@@ -61,12 +75,11 @@ tasks.register('createContainer') {
                 '--publish', '9543:443',
                 '--name', 'gitlab.taruts.net',
                 '--restart', 'always',
-                '--volume', "$home/config:/etc/gitlab".toString(),
-                '--volume', "$home/logs:/var/log/gitlab".toString(),
-                '--volume', "$home/data:/var/opt/gitlab".toString(),
                 '--shm-size', '256m'
             )
         )
+
+        addBindMounts(command, project)
 
         if (SystemUtils.IS_OS_LINUX) {
             command.addAll(
@@ -108,7 +121,7 @@ tasks.register('createContainer') {
                 }
             } catch (PrematureCloseException | ConnectException | io.netty.channel.unix.Errors.NativeIoException ignored) {
             } catch (Exception e) {
-                logger.error(">>> ${e.get}")
+                logger.error(">>> ${e.class.name}: ${e.message}")
                 throw e
             }
         }
@@ -209,36 +222,42 @@ tasks.register('removeContainerData') {
     it.group = 'gitlab-container'
     it.shouldRunAfter('removeContainer')
     it.doLast {
-        File directory = FileUtils.getFile(project.projectDir, 'home')
-        if (!directory.exists()) {
+        File homeHostDirectory = FileUtils.getFile(project.projectDir, 'home')
+        if (!homeHostDirectory.exists()) {
             return
         }
 
-        // FileUtils не позволяют одним методом удалить каталог, если там есть символьные ссылки Linux
-        // Приходится все символьные ссылки предварительно удалять вручную
-        Files.walkFileTree(directory.toPath(), Collections.singleton(FileVisitOption.FOLLOW_LINKS), 10, new java.nio.file.FileVisitor<java.nio.file.Path>() {
+        List<String> command = new ArrayList<>()
+        command.addAll(
+            List.of(
+                'docker', 'run'
+            )
+        )
+        addBindMounts(command, project)
 
-            FileVisitResult preVisitDirectory(java.nio.file.Path path, BasicFileAttributes attrs) throws IOException {
-                return FileVisitResult.CONTINUE
+        command.add('alpine:latest')
+
+        String directoryWildcards = Stream
+            .of(MountPoints.CONFIG, MountPoints.LOGS, MountPoints.DATA)
+            .map { mountPoint ->
+                String visibleFilesWildcard = "$mountPoint/*"
+                // <dot><not dot><etc>
+                // .git - counts
+                // . and .. - not
+                String hiddenFilesWildcard = "$mountPoint/.[!.]*"
+                return "$visibleFilesWildcard $hiddenFilesWildcard"
             }
+            .collect(Collectors.joining(' '))
 
-            FileVisitResult visitFile(java.nio.file.Path path, BasicFileAttributes attrs) throws IOException {
-                File file = path.toFile()
-                file.setWritable(true)
-                file.delete()
-                return FileVisitResult.CONTINUE
-            }
+        String shellCommand = "rm -rf $directoryWildcards"
 
-            FileVisitResult visitFileFailed(java.nio.file.Path path, IOException exc) throws IOException {
-                return FileVisitResult.CONTINUE
-            }
+        command.addAll(List.of(
+            'sh', '-c', "\"$shellCommand\"".toString()
+        ))
 
-            FileVisitResult postVisitDirectory(java.nio.file.Path path, IOException exc) throws IOException {
-                return FileVisitResult.CONTINUE
-            }
-        })
+        ProcessRunner.runProcess(project.projectDir, command)
 
-        FileUtils.deleteDirectory(directory)
+        FileUtils.deleteDirectory(homeHostDirectory)
     }
 }
 
