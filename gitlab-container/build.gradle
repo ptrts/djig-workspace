@@ -236,6 +236,9 @@ static String runLinuxShellCommandInDocker(Project project, String shellCommand)
         'sh', '-c', "\"$shellCommand\"".toString()
     ))
 
+    String commandStr = String.join(' ', command)
+    println("commandStr:\n\n$commandStr\n\n")
+
     return ProcessRunner.runProcess(project.projectDir, command)
 }
 
