@@ -128,6 +128,20 @@ tasks.register('createContainer') {
     }
 }
 
+tasks.register('test2') {
+    it.group = 'gitlab-container'
+    it.doLast {
+        List<String> command = Arrays.asList(
+            'docker', 'run', '--rm', 'alpine', 'sh', '-c', '"echo hello"'
+        )
+
+        String commandStr = String.join(' ', command)
+        println("commandStr:\n\n$commandStr\n\n")
+
+        return ProcessRunner.runProcess(project.projectDir, false, command)
+    }
+}
+
 tasks.register('createUser') {
     it.group = 'gitlab-container'
     it.doLast {
