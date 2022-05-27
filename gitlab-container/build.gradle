@@ -128,21 +128,6 @@ tasks.register('createContainer') {
     }
 }
 
-tasks.register('test2') {
-    it.group = 'gitlab-container'
-    it.doLast {
-
-        List<String> command = Arrays.asList(
-            'docker', 'run', '--rm', 'alpine', 'sh', '-c', 'echo hello'
-        )
-
-        String commandStr = String.join(' ', command)
-        println("commandStr:\n\n$commandStr\n\n")
-
-        ProcessRunner.runProcess(project.projectDir, false, command)
-    }
-}
-
 tasks.register('createUser') {
     it.group = 'gitlab-container'
     it.doLast {
@@ -248,7 +233,7 @@ static String runLinuxShellCommandInDocker(Project project, boolean inheritIO, S
     command.add('alpine:3.16.0')
 
     command.addAll(List.of(
-        'sh', '-c', "\"$shellCommand\"".toString()
+        'sh', '-c', shellCommand
     ))
 
     String commandStr = String.join(' ', command)
