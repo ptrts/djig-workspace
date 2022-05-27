@@ -61,6 +61,11 @@ tasks.register('createContainer') {
     it.dependsOn('removeAll')
     it.doLast {
 
+        File home = FileUtils.getFile(project.projectDir, 'home')
+        FileUtils.getFile(home, 'config').mkdirs()
+        FileUtils.getFile(home, 'logs').mkdirs()
+        FileUtils.getFile(home, 'data').mkdirs()
+
         GitLabParameters gitLabParameters = GitLabParameters.getGitLabParameters(project, 'application-dynamic-local.properties')
 
         List<String> command = new ArrayList<>()
