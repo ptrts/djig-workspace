@@ -254,7 +254,7 @@ abstract class InitAdjacentGitRepoTask extends DefaultTask {
         )
 
         // Определяем куда клонировать. Нацеливаемся на каталог, где у нас будут лежать исходники
-        String sourceDir = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
+        File sourceDir = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
 
         GitUtils.forceClone(adjacentRepoUrl, sourceDir)
     }
