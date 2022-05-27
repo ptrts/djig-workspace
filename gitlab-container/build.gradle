@@ -131,6 +131,9 @@ tasks.register('createContainer') {
 tasks.register('test2') {
     it.group = 'gitlab-container'
     it.doLast {
+
+        runProcess(project.projectDir, false, 'docker', 'run', '--rm', 'alpine', 'sh', '-c', '"echo hello"')
+
         List<String> command = Arrays.asList(
             'docker', 'run', '--rm', 'alpine', 'sh', '-c', '"echo hello"'
         )
@@ -138,10 +141,9 @@ tasks.register('test2') {
         String commandStr = String.join(' ', command)
         println("commandStr:\n\n$commandStr\n\n")
 
-        return ProcessRunner.runProcess(project.projectDir, false, command)
+        ProcessRunner.runProcess(project.projectDir, false, command)
     }
 }
-
 
 static String runProcess(File directory, boolean inheritIO, String... command) throws IOException, InterruptedException {
 
@@ -188,7 +190,7 @@ task('test3') {
         System.out.println("====== Output (inheritIO = false)");
 
         System.out.println("--- Docker process");
-        output = runProcess(project.projectDir, false, "docker", "run", "--rm", "alpine", "sh", "-c", "echo hello");
+        output = runProcess(project.projectDir, false, "docker", "run", "--rm", "alpine", "sh", "-c", '"echo hello"');
 
         System.out.println("--- Java process");
         System.out.println(output);
@@ -196,7 +198,7 @@ task('test3') {
         System.out.println("====== Output (inheritIO = true)");
 
         System.out.println("--- Docker process");
-        output = runProcess(project.projectDir, true, "docker", "run", "--rm", "alpine", "sh", "-c", "echo hello");
+        output = runProcess(project.projectDir, true, "docker", "run", "--rm", "alpine", "sh", "-c", '"echo hello"');
 
         System.out.println("--- Java process");
         System.out.println(output);
