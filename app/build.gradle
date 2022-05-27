@@ -279,7 +279,7 @@ initDynamicLocal.configure {
     it.shouldRunAfter(':gitlab-container:createAll')
 }
 
-tasks.register('init') {
+tasks.register('initProject') {
     it.group = 'app'
 
     it.description = '''
