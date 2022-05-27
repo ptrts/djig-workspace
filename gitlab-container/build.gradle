@@ -45,13 +45,17 @@ class MountPoints {
 }
 
 static def addBindMounts(List<String> command, Project project) {
-    String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
     command.addAll(
-        List.of(
-            '--volume', "$home/config:${MountPoints.CONFIG}".toString(),
-            '--volume', "$home/logs:${MountPoints.LOGS}".toString(),
-            '--volume', "$home/data:${MountPoints.DATA}".toString(),
-        )
+        getBindMounts(project)
+    )
+}
+
+static List<String> getBindMounts(Project project) {
+    String home = FileUtils.getFile(project.projectDir, 'home').canonicalPath
+    return List.of(
+        '--volume', "$home/config:${MountPoints.CONFIG}".toString(),
+        '--volume', "$home/logs:${MountPoints.LOGS}".toString(),
+        '--volume', "$home/data:${MountPoints.DATA}".toString(),
     )
 }
 
@@ -137,7 +141,7 @@ tasks.register('createUser') {
     it.group = 'gitlab-container'
     it.doLast {
 
-        String fileContents = runLinuxShellCommandInDocker(project, false, "cat ${MountPoints.CONFIG}/initial_root_password")
+        String fileContents = runLinuxShellCommandInDockerWithMounts(project, false, "cat ${MountPoints.CONFIG}/initial_root_password")
 
         List<String> lines = fileContents.readLines()
 
@@ -226,24 +230,23 @@ tasks.register('removeContainer') {
     }
 }
 
-static String runLinuxShellCommandInDocker(Project project, boolean inheritIO, String shellCommand) {
+static String runLinuxShellCommandInDockerWithMounts(Project project, boolean inheritIO, String shellCommand) {
+    List<String> bindMounts = getBindMounts(project)
+    return runLinuxShellCommandInDocker(project, inheritIO, bindMounts, shellCommand)
+}
+
+static String runLinuxShellCommandInDocker(Project project, boolean inheritIO, List<String> dockerRunOptions, String shellCommand) {
     List<String> command = new ArrayList<>()
     command.addAll(
         List.of(
             'docker', 'run', '--rm'
         )
     )
-    addBindMounts(command, project)
-
+    command.addAll(dockerRunOptions)
     command.add('alpine:3.16.0')
-
     command.addAll(List.of(
         'sh', '-c', shellCommand
     ))
-
-    String commandStr = String.join(' ', command)
-    println("commandStr:\n\n$commandStr\n\n")
-
     return ProcessRunner.runProcess(project.projectDir, inheritIO, command)
 }
 
@@ -268,7 +271,15 @@ tasks.register('removeContainerData') {
             }
             .collect(Collectors.joining(' '))
         String shellCommand = "rm -rf $directoryWildcards"
-        runLinuxShellCommandInDocker(project, false, shellCommand)
+        runLinuxShellCommandInDockerWithMounts(project, false, shellCommand)
+
+        // Удаляем сами каталоги томов
+        String homePath = FileUtils.getFile(project.projectDir, 'home').canonicalPath
+        String containerHomePath = '/tmp/pavel-taruts/gitlab-container/home'
+        List<String> bindMounts = List.of(
+            '--volume', "$homePath:$containerHomePath".toString(),
+        )
+        runLinuxShellCommandInDocker(project, false, bindMounts, "rm -rf $containerHomePath/*")
 
         FileUtils.deleteDirectory(homeHostDirectory)
     }
