@@ -132,78 +132,14 @@ tasks.register('test2') {
     it.group = 'gitlab-container'
     it.doLast {
 
-        runProcess(project.projectDir, false, 'docker', 'run', '--rm', 'alpine', 'sh', '-c', '"echo hello"')
-
         List<String> command = Arrays.asList(
-            'docker', 'run', '--rm', 'alpine', 'sh', '-c', '"echo hello"'
+            'docker', 'run', '--rm', 'alpine', 'sh', '-c', 'echo hello'
         )
 
         String commandStr = String.join(' ', command)
         println("commandStr:\n\n$commandStr\n\n")
 
         ProcessRunner.runProcess(project.projectDir, false, command)
-    }
-}
-
-static String runProcess(File directory, boolean inheritIO, String... command) throws IOException, InterruptedException {
-
-    ProcessBuilder processBuilder = new ProcessBuilder(command);
-    if (directory != null) {
-        processBuilder.directory(directory);
-    }
-
-    if (inheritIO) {
-        // Делаем, чтобы поток выводил бы свое туда же, куда выводит System.out.println.
-        // То же самое с stdin и stderr.
-        processBuilder.inheritIO();
-    }
-
-    Process process = processBuilder.start();
-
-    try (
-        BufferedReader error = process.errorReader();
-        BufferedReader input = process.inputReader();
-    ) {
-        int exitStatus = process.waitFor();
-
-        String outputText = input.lines().collect(Collectors.joining("\n"));
-        if (outputText.length() > 0) {
-            System.out.println(outputText);
-        }
-
-        error
-            .lines()
-            .forEachOrdered(System.err::println);
-
-        if (exitStatus == 0) {
-            return outputText;
-        } else {
-            throw new RuntimeException(command[0] + " exited with status " + exitStatus);
-        }
-    }
-}
-
-task('test3') {
-    doLast {
-        String output;
-
-        System.out.println("====== Output (inheritIO = false)");
-
-        System.out.println("--- Docker process");
-        output = runProcess(project.projectDir, false, "docker", "run", "--rm", "alpine", "sh", "-c", '"echo hello"');
-
-        System.out.println("--- Java process");
-        System.out.println(output);
-
-        System.out.println("====== Output (inheritIO = true)");
-
-        System.out.println("--- Docker process");
-        output = runProcess(project.projectDir, true, "docker", "run", "--rm", "alpine", "sh", "-c", '"echo hello"');
-
-        System.out.println("--- Java process");
-        System.out.println(output);
-
-        System.out.println("======");
     }
 }
 
