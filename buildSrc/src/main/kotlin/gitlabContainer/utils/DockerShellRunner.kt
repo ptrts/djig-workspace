@@ -5,7 +5,7 @@ import org.taruts.processUtils.ProcessRunner
 
 object DockerShellRunner {
     fun runLinuxShellCommandInDockerWithMounts(project: Project, inheritIO: Boolean, shellCommand: String): String {
-        val bindMounts: List<String> = MountPoints.getBindMounts(project)
+        val bindMounts: List<String> = ContainerMountPoints.getBindMounts(project)
         return runLinuxShellCommandInDocker(project, inheritIO, bindMounts, shellCommand)
     }
 

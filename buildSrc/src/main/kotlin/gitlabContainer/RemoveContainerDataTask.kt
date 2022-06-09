@@ -1,7 +1,7 @@
 package gitlabContainer
 
 import gitlabContainer.utils.DockerShellRunner
-import gitlabContainer.utils.MountPoints
+import gitlabContainer.utils.ContainerMountPoints
 import org.apache.commons.io.FileUtils
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
@@ -24,7 +24,7 @@ open class RemoveContainerDataTask : DefaultTask() {
         }
 
         val directoryWildcards: String = Stream
-            .of(MountPoints.CONFIG, MountPoints.LOGS, MountPoints.DATA)
+            .of(ContainerMountPoints.CONFIG, ContainerMountPoints.LOGS, ContainerMountPoints.DATA)
             .map { mountPoint ->
                 val visibleFilesWildcard = "$mountPoint/*"
                 // <dot><not dot><etc>

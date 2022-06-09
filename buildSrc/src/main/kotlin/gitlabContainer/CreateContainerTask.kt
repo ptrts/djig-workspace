@@ -1,7 +1,7 @@
 package gitlabContainer
 
 import gitlabContainer.utils.GitLabParameters
-import gitlabContainer.utils.MountPoints
+import gitlabContainer.utils.ContainerMountPoints
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.SystemUtils
 import org.gradle.api.DefaultTask
@@ -51,7 +51,7 @@ open class CreateContainerTask : DefaultTask() {
             )
         )
 
-        MountPoints.addBindMounts(command, project)
+        ContainerMountPoints.addBindMounts(command, project)
 
         if (SystemUtils.IS_OS_LINUX) {
             command.addAll(

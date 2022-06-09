@@ -15,9 +15,7 @@ class GitLabParameters(
     val username: String,
     val password: String
 ) {
-
     companion object {
-
         fun fromAppProjectResource(project: Project, propertiesResourcePath: String): GitLabParameters {
 
             val appProject = project.project(":app")
