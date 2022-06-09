@@ -17,6 +17,37 @@ open class CreateUserTask : DefaultTask() {
 
     @TaskAction
     fun action() {
+        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
+
+        val gitLabApi = loginToGitLabApiAsRoot(gitLabParameters)
+
+        val user = User()
+        user.username = gitLabParameters.username
+        user.name = gitLabParameters.username
+        user.email = "${gitLabParameters.username}@mail.com"
+        user.isAdmin = true
+        user.canCreateGroup = true
+        user.projectsLimit = 0
+        user.sharedRunnersMinutesLimit = 0
+        user.skipConfirmation = true
+
+        gitLabApi.userApi.createUser(user, gitLabParameters.password, false)
+    }
+
+    private fun loginToGitLabApiAsRoot(gitLabParameters: GitLabParameters): GitLabApi {
+        val initialRootPassword: String = getInitialRootPassword()
+
+        val gitLabApi = GitLabApi.oauth2Login(
+            gitLabParameters.gitlabUri.toString(),
+            "root",
+            initialRootPassword,
+            true
+        )
+
+        return gitLabApi
+    }
+
+    private fun getInitialRootPassword(): String {
         val fileContents: String = DockerShellRunner.runLinuxShellCommandInDockerWithMounts(
             project,
             false,
@@ -36,20 +67,6 @@ open class CreateUserTask : DefaultTask() {
             .findAny()
             .orElseThrow { RuntimeException("Password not found") }
 
-        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
-
-        val gitLabApi = GitLabApi.oauth2Login(gitLabParameters.gitlabUri.toString(), "root", password, true)
-
-        val user = User()
-        user.username = gitLabParameters.username
-        user.name = gitLabParameters.username
-        user.email = "${gitLabParameters.username}@mail.com"
-        user.isAdmin = true
-        user.canCreateGroup = true
-        user.projectsLimit = 0
-        user.sharedRunnersMinutesLimit = 0
-        user.skipConfirmation = true
-
-        gitLabApi.userApi.createUser(user, gitLabParameters.password, false)
+        return password
     }
 }
