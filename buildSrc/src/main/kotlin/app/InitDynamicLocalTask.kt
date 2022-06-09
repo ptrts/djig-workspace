@@ -1,6 +1,6 @@
 package app
 
-import gitlabContainer.GitLabParameters
+import gitlabContainer.utils.GitLabParameters
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.gitlab4j.api.GitLabApi

@@ -1,7 +1,7 @@
 package gitlabContainer
 
-import gitlabContainer.DockerShellRunner
-import gitlabContainer.MountPoints
+import gitlabContainer.utils.DockerShellRunner
+import gitlabContainer.utils.MountPoints
 import org.apache.commons.io.FileUtils
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction

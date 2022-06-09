@@ -1,5 +1,8 @@
 package gitlabContainer
 
+import gitlabContainer.utils.DockerShellRunner
+import gitlabContainer.utils.GitLabParameters
+import gitlabContainer.utils.MountPoints
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.models.User
 import org.gradle.api.DefaultTask

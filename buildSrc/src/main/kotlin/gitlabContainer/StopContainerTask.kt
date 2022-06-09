@@ -1,6 +1,6 @@
 package gitlabContainer
 
-import gitlabContainer.ContainerUtils
+import gitlabContainer.utils.ContainerUtils
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.taruts.processUtils.ProcessRunner

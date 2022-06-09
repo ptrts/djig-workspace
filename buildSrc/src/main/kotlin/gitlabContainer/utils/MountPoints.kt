@@ -1,4 +1,4 @@
-package gitlabContainer
+package gitlabContainer.utils
 
 import org.apache.commons.io.FileUtils
 import org.gradle.api.Project

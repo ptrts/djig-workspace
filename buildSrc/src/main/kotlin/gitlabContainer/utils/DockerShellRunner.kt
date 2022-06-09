@@ -1,4 +1,4 @@
-package gitlabContainer
+package gitlabContainer.utils
 
 import org.gradle.api.Project
 import org.taruts.processUtils.ProcessRunner

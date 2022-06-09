@@ -1,4 +1,4 @@
-package gitlabContainer
+package gitlabContainer.utils
 
 import org.apache.commons.lang3.StringUtils
 import org.taruts.processUtils.ProcessRunner

@@ -1,5 +1,7 @@
 package gitlabContainer
 
+import gitlabContainer.utils.GitLabParameters
+import gitlabContainer.utils.MountPoints
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.SystemUtils
 import org.gradle.api.DefaultTask
