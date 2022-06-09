@@ -26,5 +26,8 @@ dependencies {
 
     // Other libraries
     implementation("javax.inject:javax.inject:1")
+    implementation("org.slf4j:slf4j-simple:1.7.36")
     implementation("org.gitlab4j:gitlab4j-api:5.0.1")
+    implementation("io.projectreactor.netty:reactor-netty-http:1.0.18")
+    implementation("io.netty:netty-transport-native-unix-common:4.1.74.Final")
 }
