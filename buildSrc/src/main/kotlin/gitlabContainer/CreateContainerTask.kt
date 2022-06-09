@@ -2,6 +2,7 @@ package gitlabContainer
 
 import gitlabContainer.utils.GitLabParameters
 import gitlabContainer.utils.ContainerMountPoints
+import io.netty.channel.unix.Errors
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.SystemUtils
 import org.gradle.api.DefaultTask
@@ -28,13 +29,24 @@ open class CreateContainerTask : DefaultTask() {
 
     @TaskAction
     fun action() {
+        createHostDirectories()
+        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
+        createContainer(gitLabParameters)
+        waitUntilContainerIsReady(gitLabParameters)
+    }
+
+    private fun createHostDirectories() {
+        // These are host directories to be mounted inside the container.
+        // We create them here ourselves to prevent Docker from doing so.
+        // This is because if Docker creates them, they'll have different permitions,
+        // which would make it harder to delete them when we decide to remove the container.
         val home: File = FileUtils.getFile(project.projectDir, "home")
         FileUtils.getFile(home, "config").mkdirs()
         FileUtils.getFile(home, "logs").mkdirs()
         FileUtils.getFile(home, "data").mkdirs()
+    }
 
-        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
-
+    private fun createContainer(gitLabParameters: GitLabParameters) {
         val command: MutableList<String> = mutableListOf()
 
         command.addAll(
@@ -64,7 +76,9 @@ open class CreateContainerTask : DefaultTask() {
         command.add("gitlab/gitlab-ce:14.10.2-ce.0")
 
         ProcessRunner.runProcess(project.projectDir, command)
+    }
 
+    private fun waitUntilContainerIsReady(gitLabParameters: GitLabParameters) {
         Loggers.useSl4jLoggers()
 
         val httpClient: HttpClient = HttpClient
@@ -74,32 +88,28 @@ open class CreateContainerTask : DefaultTask() {
 
         val loggingManagerInternal: LoggingManagerInternal = logging as LoggingManagerInternal
 
-        // reactor-netty-http spams warnings when throwing exceptions
+        // reactor-netty-http spams warnings when throwing exceptions, so we use this dirty hack to
+        // change the logging level just for this particular task
         loggingManagerInternal.setLevelInternal(LogLevel.ERROR)
 
         while (true) {
             try {
                 try {
-                    val response: HttpClientResponse? = httpClient
+                    val response: HttpClientResponse = httpClient
                         .get()
                         .response()
-                        .block(Duration.ofSeconds(10))
-                    if (response != null) {
-                        val code: Int = response.status().code()
-                        if (code in 200..399) {
-                            break
-                        }
+                        .block(Duration.ofSeconds(10))!!
+                    val code: Int = response.status().code()
+                    if (code in 200..399) {
+                        break
                     }
                 } catch (e: Exception) {
                     // Unwrapping the cause if exists
-                    throw if (e.cause == null) e else e.cause as Exception
+                    throw e.cause ?: e
                 }
             } catch (ignored: PrematureCloseException) {
             } catch (ignored: ConnectException) {
-            } catch (ignored: io.netty.channel.unix.Errors.NativeIoException) {
-            } catch (e: Exception) {
-                logger.error(">>> ${e::class.qualifiedName}: ${e.message}")
-                throw e
+            } catch (ignored: Errors.NativeIoException) {
             }
         }
     }
