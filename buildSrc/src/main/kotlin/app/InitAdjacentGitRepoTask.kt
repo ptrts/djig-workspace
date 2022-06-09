@@ -13,7 +13,7 @@ import javax.inject.Inject
  * This task clones another Git repo of the same group as this project itself into a subdirectory.
  * This project is considered a main one, you clone it first manually.
  * Those cloned to subdirectories are kind of supporting projects.
- * They are cloned automatically, each by an instance of this task.
+ * They are cloned automatically, each by a separate instance of this task.
  * The subdirectories of the supporting projects should be specified in the .gitignore of this project.
  * Remote Git repo URLs of the main project and supporting ones are different only in their postfixes
  * which go just before the ".git" in the end.

@@ -18,8 +18,7 @@ class GitLabParameters(
 
     companion object {
 
-        @Throws(IOException::class, URISyntaxException::class)
-        fun getGitLabParameters(project: Project, propertiesResourcePath: String): GitLabParameters {
+        fun fromAppProjectResource(project: Project, propertiesResourcePath: String): GitLabParameters {
 
             val appProject = project.project(":app")
 

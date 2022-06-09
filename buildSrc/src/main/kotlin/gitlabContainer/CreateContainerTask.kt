@@ -33,8 +33,7 @@ open class CreateContainerTask : DefaultTask() {
         FileUtils.getFile(home, "logs").mkdirs()
         FileUtils.getFile(home, "data").mkdirs()
 
-        val gitLabParameters: GitLabParameters =
-            GitLabParameters.getGitLabParameters(project, "application-dynamic-local.properties")
+        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
 
         val command: MutableList<String> = mutableListOf()
 

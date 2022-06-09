@@ -17,8 +17,11 @@ open class CreateUserTask : DefaultTask() {
 
     @TaskAction
     fun action() {
-        val fileContents: String =
-            DockerShellRunner.runLinuxShellCommandInDockerWithMounts(project, false, "cat ${MountPoints.CONFIG}/initial_root_password")
+        val fileContents: String = DockerShellRunner.runLinuxShellCommandInDockerWithMounts(
+            project,
+            false,
+            "cat ${MountPoints.CONFIG}/initial_root_password"
+        )
 
         val lines: List<String> = fileContents.split("\\n")
 
@@ -33,10 +36,9 @@ open class CreateUserTask : DefaultTask() {
             .findAny()
             .orElseThrow { RuntimeException("Password not found") }
 
-        val gitLabParameters: GitLabParameters =
-            GitLabParameters.getGitLabParameters(project, "application-dynamic-local.properties")
+        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
 
-        val gitLabApi: GitLabApi = GitLabApi.oauth2Login(gitLabParameters.gitlabUri.toString(), "root", password, true)
+        val gitLabApi = GitLabApi.oauth2Login(gitLabParameters.gitlabUri.toString(), "root", password, true)
 
         val user = User()
         user.username = gitLabParameters.username
