@@ -109,7 +109,7 @@ val initLocalGitLab by tasks.registering {
     An aggregator task that creates a local GitLab Docker container, 
     creates a project in there which is a fork of dynamic-dev 
     and clones it into the dynamic-local project subdirectory
-    """
+    """.trimIndent()
 
     dependsOn(":gitlab-container:createAll", initDynamicLocal)
 }
@@ -128,7 +128,7 @@ tasks.register("initProject") {
     description = """
     Initializes everything for the project. 
     This is an aggregator task for initLocalGitLab, initDynamicApi and initDynamicDev
-    """
+    """.trimIndent()
 
     dependsOn(initLocalGitLab, "initDynamicApi", "initDynamicDev")
 }

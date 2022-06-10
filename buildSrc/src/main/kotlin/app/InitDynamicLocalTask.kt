@@ -19,7 +19,7 @@ open class InitDynamicLocalTask : DefaultTask() {
         description = """
         Creates a fork of dynamic-dev in the dynamic-local project subdirectory 
         and pushes it to the local GitLab
-        """
+        """.trimIndent()
     }
 
     private lateinit var dynamicLocalDirectory: File
