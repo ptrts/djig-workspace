@@ -3,7 +3,7 @@ package gitlabContainer.utils
 import org.apache.commons.io.FileUtils
 import org.gradle.api.Project
 
-object ContainerMountPoints {
+object GitLabContainerMountPoints {
 
     const val CONFIG = "/etc/gitlab"
     const val LOGS = "/var/log/gitlab"

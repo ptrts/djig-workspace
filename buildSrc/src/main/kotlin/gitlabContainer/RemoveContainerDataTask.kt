@@ -1,7 +1,7 @@
 package gitlabContainer
 
 import gitlabContainer.utils.DockerShellRunner
-import gitlabContainer.utils.ContainerMountPoints
+import gitlabContainer.utils.GitLabContainerMountPoints
 import org.apache.commons.io.FileUtils
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
@@ -54,7 +54,7 @@ open class RemoveContainerDataTask : DefaultTask() {
         // we make a wildcard for all files and directories directly inside the volume directory.
         // Then we join all wildcards for all the volume directories into one big wildcard.
         val directoryWildcards: String = Stream
-            .of(ContainerMountPoints.CONFIG, ContainerMountPoints.LOGS, ContainerMountPoints.DATA)
+            .of(GitLabContainerMountPoints.CONFIG, GitLabContainerMountPoints.LOGS, GitLabContainerMountPoints.DATA)
             .map { mountPoint ->
                 val visibleFilesWildcard = "$mountPoint/*"
                 // <dot><not dot><etc>
@@ -67,7 +67,7 @@ open class RemoveContainerDataTask : DefaultTask() {
 
         // Using the big wildcard to recursively remove all the files and directories that are directly inside a volume directory.
         val shellCommand = "rm -rf $directoryWildcards"
-        DockerShellRunner.runLinuxShellCommandInDockerWithMounts(project, false, shellCommand)
+        DockerShellRunner.runCommandInDockerWithGitLabMounts(project, false, shellCommand)
     }
 
     private fun removeHostVolumeDirectories(hostHomeDirectory: File) {
@@ -89,6 +89,6 @@ open class RemoveContainerDataTask : DefaultTask() {
         val bindMounts: List<String> = listOf(
             "--volume", "$hostHomePath:$containerHomePath",
         )
-        DockerShellRunner.runLinuxShellCommandInDocker(project, false, bindMounts, "rm -rf $containerHomePath/*")
+        DockerShellRunner.runCommandInDocker(project, false, bindMounts, "rm -rf $containerHomePath/*")
     }
 }

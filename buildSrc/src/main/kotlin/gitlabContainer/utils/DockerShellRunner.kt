@@ -4,12 +4,12 @@ import org.gradle.api.Project
 import org.taruts.processUtils.ProcessRunner
 
 object DockerShellRunner {
-    fun runLinuxShellCommandInDockerWithMounts(project: Project, inheritIO: Boolean, shellCommand: String): String {
-        val bindMounts: List<String> = ContainerMountPoints.getBindMounts(project)
-        return runLinuxShellCommandInDocker(project, inheritIO, bindMounts, shellCommand)
+    fun runCommandInDockerWithGitLabMounts(project: Project, inheritIO: Boolean, shellCommand: String): String {
+        val bindMounts: List<String> = GitLabContainerMountPoints.getBindMounts(project)
+        return runCommandInDocker(project, inheritIO, bindMounts, shellCommand)
     }
 
-    fun runLinuxShellCommandInDocker(
+    fun runCommandInDocker(
         project: Project,
         inheritIO: Boolean,
         dockerRunOptions: List<String>,

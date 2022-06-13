@@ -2,7 +2,7 @@ package gitlabContainer
 
 import gitlabContainer.utils.DockerShellRunner
 import gitlabContainer.utils.GitLabParameters
-import gitlabContainer.utils.ContainerMountPoints
+import gitlabContainer.utils.GitLabContainerMountPoints
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.models.User
 import org.gradle.api.DefaultTask
@@ -48,10 +48,10 @@ open class CreateUserTask : DefaultTask() {
     }
 
     private fun getInitialRootPassword(): String {
-        val fileContents: String = DockerShellRunner.runLinuxShellCommandInDockerWithMounts(
+        val fileContents: String = DockerShellRunner.runCommandInDockerWithGitLabMounts(
             project,
             false,
-            "cat ${ContainerMountPoints.CONFIG}/initial_root_password"
+            "cat ${GitLabContainerMountPoints.CONFIG}/initial_root_password"
         )
 
         val lines: List<String> = fileContents.split("\\n")

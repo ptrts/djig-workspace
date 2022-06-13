@@ -1,7 +1,7 @@
 package gitlabContainer
 
 import gitlabContainer.utils.GitLabParameters
-import gitlabContainer.utils.ContainerMountPoints
+import gitlabContainer.utils.GitLabContainerMountPoints
 import io.netty.channel.unix.Errors
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.SystemUtils
@@ -13,7 +13,6 @@ import org.taruts.processUtils.ProcessRunner
 import reactor.netty.http.client.HttpClient
 import reactor.netty.http.client.HttpClientResponse
 import reactor.netty.http.client.PrematureCloseException
-import reactor.util.Loggers
 import java.io.File
 import java.net.ConnectException
 import java.time.Duration
@@ -29,13 +28,13 @@ open class CreateContainerTask : DefaultTask() {
 
     @TaskAction
     fun action() {
-        createHostDirectories()
+        createVolumeDirectoriesOnHost()
         val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
         createContainer(gitLabParameters)
         waitUntilContainerIsReady(gitLabParameters)
     }
 
-    private fun createHostDirectories() {
+    private fun createVolumeDirectoriesOnHost() {
         // These are host directories to be mounted inside the container.
         // We create them here ourselves to prevent Docker from doing so.
         // This is because if Docker creates them, they'll have different permitions,
@@ -63,7 +62,7 @@ open class CreateContainerTask : DefaultTask() {
             )
         )
 
-        ContainerMountPoints.addBindMounts(command, project)
+        GitLabContainerMountPoints.addBindMounts(command, project)
 
         if (SystemUtils.IS_OS_LINUX) {
             command.addAll(
