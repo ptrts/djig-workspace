@@ -79,8 +79,6 @@ open class CreateContainerTask : DefaultTask() {
     }
 
     private fun waitUntilContainerIsReady(gitLabParameters: GitLabParameters) {
-        Loggers.useSl4jLoggers()
-
         val httpClient: HttpClient = HttpClient
             .create()
             .compress(true)
