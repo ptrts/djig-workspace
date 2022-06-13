@@ -1,18 +1,16 @@
 package app
 
 import gitlabContainer.utils.GitLabParameters
-import org.apache.commons.lang3.StringUtils
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group
 import org.gitlab4j.api.models.Project
-import java.net.URI
 
 object LocalGitLabProjectCreator {
 
     fun recreateGroupAndProject(localGitLabParameters: GitLabParameters) {
         val gitLabApi: GitLabApi = getGitLabApi(localGitLabParameters)
-        val projectUriParceResult = parceRemoteUri(localGitLabParameters.projectUri)
+        val projectUriParceResult = GitLabProjectUriParser.parse(localGitLabParameters.projectUri)
         val group: Group = getOrCreateGroup(gitLabApi, projectUriParceResult.groupPath)
         recreateProject(gitLabApi, group, projectUriParceResult.projectName)
     }
@@ -23,32 +21,6 @@ object LocalGitLabProjectCreator {
         gitLabParameters.password,
         true
     )
-
-    private fun parceRemoteUri(remoteUri: URI): RemoteUriParceResult {
-
-        // Breaking the path (what goes after the first "/") of the dynamic-local Git repo URL into parts
-        val pathParts: List<String> = remoteUri.path
-            .split("/")
-            .stream()
-            .filter(StringUtils::isNotBlank)
-            .toList()
-
-        // The last part is the .git "file" name
-        val projectFileName: String = pathParts[pathParts.size - 1]
-        // Removing the ".git" part to get the project name
-        val dotIndex: Int = projectFileName.lastIndexOf(".")
-        val projectName: String =
-            if (dotIndex == -1)
-                projectFileName
-            else
-                projectFileName.substring(0, dotIndex)
-
-        // Getting the path of the group of the project
-        // It's everything in the project path before the project .git "file"
-        val groupPath: String = pathParts.subList(0, pathParts.size - 1).joinToString("/")
-
-        return RemoteUriParceResult(groupPath, projectName)
-    }
 
     private fun getOrCreateGroup(gitLabApi: GitLabApi, groupPath: String): Group {
         return gitLabApi.groupApi.getOptionalGroup(groupPath).orElseGet {
@@ -106,6 +78,4 @@ object LocalGitLabProjectCreator {
         }
         throw IllegalStateException("Exectution isn't supposed to reach here")
     }
-
-    private class RemoteUriParceResult(val projectName: String, val groupPath: String)
 }
