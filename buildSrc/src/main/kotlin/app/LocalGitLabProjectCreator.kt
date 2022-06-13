@@ -59,7 +59,7 @@ object LocalGitLabProjectCreator {
     }
 
     private fun createProject(gitLabApi: GitLabApi, group: Group, projectName: String): Project {
-        // There are attempts because after disappearing from the API a project may still exist for some time in GitLab,
+        // There are attempts because after disappearing from the API a project may still exist for some time in GitLab underwhater,
         // making attempts to create another project with the same name and in the same namespace fail
         for (i in 100 downTo 1) {
             try {
