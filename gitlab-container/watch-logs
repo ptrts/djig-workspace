@@ -1,3 +1,3 @@
 #!/bin/sh
 
-sudo docker logs -f gitlab.taruts.net
+sudo docker logs -f gitlab.taruts.org

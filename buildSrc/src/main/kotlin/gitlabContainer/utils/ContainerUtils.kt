@@ -11,7 +11,7 @@ object ContainerUtils {
             "docker", "container", "ls",
             "-q",
             "-a",
-            "-f", "name=gitlab.taruts.net"
+            "-f", "name=gitlab.taruts.org"
         )
         // println("containerId=$containerId")
         return StringUtils.isNotBlank(containerId)

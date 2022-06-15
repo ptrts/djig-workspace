@@ -17,7 +17,7 @@ open class RemoveContainerTask : DefaultTask() {
         if (ContainerUtils.containerExists()) {
             ProcessRunner.runProcess(
                 project.projectDir,
-                "docker", "container", "rm", "--volumes", "gitlab.taruts.net"
+                "docker", "container", "rm", "--volumes", "gitlab.taruts.org"
             )
         }
     }

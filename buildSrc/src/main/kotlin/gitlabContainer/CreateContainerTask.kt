@@ -56,7 +56,7 @@ open class CreateContainerTask : DefaultTask() {
                 "--publish", "9522:22",
                 "--publish", "${gitLabParameters.gitlabUri.port}:80",
                 "--publish", "9543:443",
-                "--name", "gitlab.taruts.net",
+                "--name", "gitlab.taruts.org",
                 "--restart", "always",
                 "--shm-size", "256m"
             )

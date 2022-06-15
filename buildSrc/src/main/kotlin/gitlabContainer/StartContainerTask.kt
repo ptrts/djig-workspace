@@ -14,7 +14,7 @@ open class StartContainerTask : DefaultTask() {
     fun action() {
         ProcessRunner.runProcess(
             project.projectDir,
-            "docker", "container", "start", "gitlab.taruts.net"
+            "docker", "container", "start", "gitlab.taruts.org"
         )
     }
 }

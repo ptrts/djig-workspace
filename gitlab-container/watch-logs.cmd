@@ -1,1 +1,1 @@
-docker logs -f gitlab.taruts.net
+docker logs -f gitlab.taruts.org

@@ -20,7 +20,7 @@ open class StopContainerTask : DefaultTask() {
             @Suppress("UNUSED_VARIABLE")
             val output: String = ProcessRunner.runProcess(
                 project.projectDir,
-                "docker", "container", "stop", "gitlab.taruts.net"
+                "docker", "container", "stop", "gitlab.taruts.org"
             )
 
             // println("Docker output: $output")
