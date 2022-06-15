@@ -1,7 +1,7 @@
-package app.main.dynamic.wiring;
+package org.taruts.dynamicJava.app.dynamicWiring;
 
-import app.dynamic.api.DynamicComponent;
 import org.springframework.stereotype.Component;
+import org.taruts.dynamicJava.dynamicApi.DynamicComponent;
 
 @Component
 public class DelegatingDynamicComponent implements DynamicComponent {

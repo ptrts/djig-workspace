@@ -1,7 +1,7 @@
-package app.main;
+package org.taruts.dynamicJava.app;
 
-import app.dynamic.api.MainComponent;
 import org.springframework.stereotype.Component;
+import org.taruts.dynamicJava.dynamicApi.MainComponent;
 
 @Component
 public class MainComponentImpl implements MainComponent {

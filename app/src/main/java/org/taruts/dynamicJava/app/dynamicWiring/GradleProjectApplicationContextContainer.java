@@ -1,6 +1,5 @@
-package app.main.dynamic.wiring;
+package org.taruts.dynamicJava.app.dynamicWiring;
 
-import app.dynamic.api.DynamicComponent;
 import lombok.SneakyThrows;
 import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +8,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.taruts.dynamicJava.dynamicApi.DynamicComponent;
 
 import java.io.File;
 import java.util.List;

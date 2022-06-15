@@ -1,4 +1,4 @@
-package app.main;
+package org.taruts.dynamicJava.app;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

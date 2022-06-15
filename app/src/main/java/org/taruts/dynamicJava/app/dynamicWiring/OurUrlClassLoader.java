@@ -1,4 +1,4 @@
-package app.main.dynamic.wiring;
+package org.taruts.dynamicJava.app.dynamicWiring;
 
 import java.net.URL;
 import java.net.URLClassLoader;
