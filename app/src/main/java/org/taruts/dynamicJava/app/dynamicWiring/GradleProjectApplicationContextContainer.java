@@ -8,22 +8,21 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.dynamicApi.DynamicComponent;
+import org.taruts.dynamicJava.app.dynamicWiring.proxy.DynamicComponentProxy;
+import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 @Component
 public class GradleProjectApplicationContextContainer {
 
-    private GradleProjectApplicationContext gradleProjectApplicationContext;
-
     @Autowired
-    private ApplicationContext applicationContext;
+    private ApplicationContext mainContext;
 
-    @Autowired
-    private DelegatingDynamicComponent delegatingDynamicComponent;
+    private GradleProjectApplicationContext childContext;
 
     @Autowired
     private DynamicImplProperties dynamicImplProperties;
@@ -33,42 +32,70 @@ public class GradleProjectApplicationContextContainer {
     private File dynamicImplSourceDirectory;
 
     public void refresh() {
+        GradleProjectApplicationContext newChildContext = createNewChildContext();
+        setNewDelegatesInMainContext(newChildContext);
+        closeOldChildContextAndSetNewReference(newChildContext);
+    }
 
+    private GradleProjectApplicationContext createNewChildContext() {
         DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
         GradleProjectApplicationContext newContext = new GradleProjectApplicationContext(
-                applicationContext,
+                mainContext,
                 gitRepositoryProperties.getUrl(),
                 gitRepositoryProperties.getUsername(),
                 gitRepositoryProperties.getPassword(),
                 dynamicImplSourceDirectory
         );
         newContext.refresh();
+        return newContext;
+    }
 
-        Map<String, DynamicComponent> dynamicComponentsMap = newContext.getBeansOfType(DynamicComponent.class);
-        List<DynamicComponent> dynamicComponents = dynamicComponentsMap
-                .values()
-                .stream()
-                .filter(currentDynamicComponent -> currentDynamicComponent != delegatingDynamicComponent)
-                .toList();
-        if (dynamicComponents.size() != 1) {
-            throw new IllegalStateException(
-                    "dynamicComponents.size() = %d".formatted(
-                            dynamicComponents.size()
-                    )
-            );
-        }
-        DynamicComponent childContextDynamicComponent = dynamicComponents.get(0);
-        delegatingDynamicComponent.setDelegate(childContextDynamicComponent);
+    private void setNewDelegatesInMainContext(GradleProjectApplicationContext newContext) {
 
-        GradleProjectApplicationContext oldContext = gradleProjectApplicationContext;
+        @SuppressWarnings("rawtypes")
+        Map<String, DynamicComponentProxy> proxiesMap = mainContext.getBeansOfType(DynamicComponentProxy.class);
 
-        // Saving the new context in the field
-        gradleProjectApplicationContext = newContext;
+        proxiesMap.forEach((proxyBeanName, proxy) -> {
+
+            Class<?>[] proxyInterfaces = proxy.getClass().getInterfaces();
+
+            Class<? extends DynamicComponent> dynamicProxyInterface = Stream
+                    .of(proxyInterfaces)
+                    .filter(DynamicComponent.class::isAssignableFrom)
+                    .map(iface -> {
+                        //noinspection unchecked
+                        return (Class<? extends DynamicComponent>) iface;
+                    })
+                    .findAny()
+                    .orElseThrow(() ->
+                            new IllegalStateException(
+                                    "A DynamicComponentProxy must implement one of the interfaces extending DynamicComponent"
+                            )
+                    );
+
+            Map<String, ? extends DynamicComponent> dynamicImplementationsMap = newContext.getBeansOfType(dynamicProxyInterface);
+
+            List<? extends DynamicComponent> implementations = dynamicImplementationsMap
+                    .values()
+                    .stream()
+                    .filter(currentImplementation -> !(currentImplementation instanceof DynamicComponentProxy))
+                    .toList();
+            DynamicComponent childContextDynamicImplementation = implementations.get(0);
+
+            //noinspection unchecked
+            proxy.setDelegate(childContextDynamicImplementation);
+        });
+    }
+
+    private void closeOldChildContextAndSetNewReference(GradleProjectApplicationContext newChildContext) {
 
         // Closing the old context
-        if (oldContext != null) {
-            oldContext.close();
+        if (childContext != null) {
+            childContext.close();
         }
+
+        // Saving the new context in the field
+        childContext = newChildContext;
     }
 
     @SneakyThrows
@@ -81,9 +108,6 @@ public class GradleProjectApplicationContextContainer {
 
     @EventListener(ContextClosedEvent.class)
     public void close() {
-        if (gradleProjectApplicationContext != null) {
-            gradleProjectApplicationContext.close();
-            gradleProjectApplicationContext = null;
-        }
+        closeOldChildContextAndSetNewReference(null);
     }
 }

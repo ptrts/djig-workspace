@@ -16,6 +16,7 @@ import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.taruts.dynamicJava.app.dynamicWiring.proxy.DynamicComponentsBeanDefinitionRegistryPostProcessor;
 import org.taruts.gitUtils.GitUtils;
 import org.taruts.gradleUtils.GradleBuilder;
 
@@ -79,6 +80,8 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         // Setting ClassLoader
         setClassLoader(classLoader);
         getBeanFactory().setBeanClassLoader(classLoader);
+
+        registerBean(DynamicComponentsBeanDefinitionRegistryPostProcessor.class, classLoader);
 
         // Setting environment
         ConfigurableEnvironment environment = new AbstractEnvironment() {

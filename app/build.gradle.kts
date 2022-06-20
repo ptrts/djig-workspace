@@ -25,7 +25,7 @@ buildscript {
 }
 
 plugins {
-    id("org.springframework.boot") version "2.6.4"
+    id("org.springframework.boot") version "2.7.0"
     id("io.spring.dependency-management") version "1.0.11.RELEASE"
     id("application")
 }
@@ -82,6 +82,9 @@ dependencies {
     implementation("org.apache.commons:commons-lang3")
     implementation("commons-io:commons-io:2.11.0")
     implementation("com.google.guava:guava:31.1-jre")
+
+    // Reflections
+    implementation("org.reflections:reflections:0.10.2")
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Tests

@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.taruts.dynamicJava.app.dynamicWiring.GradleProjectApplicationContextContainer;
 
+/**
+ * Serves requests to refresh the dynamic code.
+ * The "refresh" means to clone, to build and replace the dynamic components by their newer versions.
+ * Such requests are expected to come from a GitLab webhook.
+ */
 @RestController
 @RequestMapping("refresh")
 @Slf4j
