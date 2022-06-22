@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;

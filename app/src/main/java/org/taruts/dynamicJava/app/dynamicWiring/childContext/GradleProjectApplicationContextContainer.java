@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext;
 
 import lombok.SneakyThrows;
 import org.apache.commons.io.FileUtils;
@@ -8,7 +8,14 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy.DynamicComponentProxy;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicImplProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.classLoader.DynamicProjectClassLoader;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuild;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuildService;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.remote.DynamicProjectGitRemote;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.remote.DynamicProjectGitRemoteService;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.source.DynamicProjectLocalGitRepo;
+import org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy.DynamicComponentProxy;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.io.File;
@@ -31,6 +38,12 @@ public class GradleProjectApplicationContextContainer {
     @Qualifier("dynamicImplSourceDirectory")
     private File dynamicImplSourceDirectory;
 
+    @Autowired
+    private DynamicProjectGitRemoteService dynamicProjectGitRemoteService;
+
+    @Autowired
+    private DynamicProjectGradleBuildService dynamicProjectGradleBuildService;
+
     public void refresh() {
         GradleProjectApplicationContext newChildContext = createNewChildContext();
         setNewDelegatesInMainContext(newChildContext);
@@ -38,14 +51,30 @@ public class GradleProjectApplicationContextContainer {
     }
 
     private GradleProjectApplicationContext createNewChildContext() {
+
         DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
-        GradleProjectApplicationContext newContext = new GradleProjectApplicationContext(
-                mainContext,
+
+        DynamicProjectGitRemote remote = new DynamicProjectGitRemote(
                 gitRepositoryProperties.getUrl(),
                 gitRepositoryProperties.getUsername(),
-                gitRepositoryProperties.getPassword(),
-                dynamicImplSourceDirectory
+                gitRepositoryProperties.getPassword()
         );
+
+        File sourceDirectory = dynamicImplSourceDirectory;
+
+        // Clone
+        DynamicProjectLocalGitRepo dynamicProjectLocalGitRepo = dynamicProjectGitRemoteService.cloneWithRetries(remote, sourceDirectory);
+
+        // Build
+        DynamicProjectGradleBuild build = dynamicProjectGradleBuildService.build(dynamicProjectLocalGitRepo);
+
+        DynamicProjectClassLoader childClassLoader = new DynamicProjectClassLoader(sourceDirectory, build.classesDirectory(), build.resourcesDirectory());
+
+        GradleProjectApplicationContext newContext = new GradleProjectApplicationContext(
+                mainContext,
+                childClassLoader
+        );
+
         newContext.refresh();
         return newContext;
     }

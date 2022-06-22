@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +10,7 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.Ordered;
-import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy.DynamicComponentProxy;
+import org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy.DynamicComponentProxy;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.util.Arrays;

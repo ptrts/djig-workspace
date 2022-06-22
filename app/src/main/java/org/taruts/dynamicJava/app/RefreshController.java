@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.taruts.dynamicJava.app.dynamicWiring.GradleProjectApplicationContextContainer;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.GradleProjectApplicationContextContainer;
 
 /**
  * Serves requests to refresh the dynamic code.

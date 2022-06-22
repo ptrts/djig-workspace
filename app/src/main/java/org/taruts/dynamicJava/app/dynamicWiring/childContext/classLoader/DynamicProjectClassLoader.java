@@ -1,5 +1,6 @@
-package org.taruts.dynamicJava.app.dynamicWiring;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext.classLoader;
 
+import lombok.Getter;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.File;
@@ -9,10 +10,22 @@ import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class OurUrlClassLoader extends URLClassLoader {
+public class DynamicProjectClassLoader extends URLClassLoader {
 
-    public OurUrlClassLoader(String name, ClassLoader parent, File... directories) {
-        super(name, filesToUrls(directories), parent);
+    @Getter
+    final File classesDirectory;
+
+    @Getter
+    final File resourcesDirectory;
+
+    public DynamicProjectClassLoader(File sourceDirectory, File classesDirectory, File resourcesDirectory) {
+        super(
+                sourceDirectory.getName(),
+                filesToUrls(classesDirectory, resourcesDirectory),
+                DynamicProjectClassLoader.class.getClassLoader()
+        );
+        this.classesDirectory = classesDirectory;
+        this.resourcesDirectory = resourcesDirectory;
     }
 
     /**
@@ -43,7 +56,7 @@ public class OurUrlClassLoader extends URLClassLoader {
     private static URL[] filesToUrls(File... directories) {
         return Arrays
                 .stream(directories)
-                .map(OurUrlClassLoader::fileToUrl)
+                .map(DynamicProjectClassLoader::fileToUrl)
                 .toArray(URL[]::new);
     }
 

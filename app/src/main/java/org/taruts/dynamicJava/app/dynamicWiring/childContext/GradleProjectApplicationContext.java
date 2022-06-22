@@ -1,7 +1,6 @@
-package org.taruts.dynamicJava.app.dynamicWiring;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -11,15 +10,9 @@ import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
-import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.DynamicComponentDefinitionPostProcessor;
-import org.taruts.gitUtils.GitUtils;
-import org.taruts.gradleUtils.GradleBuilder;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.classLoader.DynamicProjectClassLoader;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -31,39 +24,15 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
 
     public GradleProjectApplicationContext(
             ApplicationContext parent,
-            String url,
-            String username,
-            String password,
-            File projectSourceDirectory
+            DynamicProjectClassLoader childClassLoader
     ) {
-
-        // todo Вытащить сие из контекста?
-        //      Может сделать так, чтобы контекст делался уже из готового class loader?
-
-        cloneWithRetries(username, password, projectSourceDirectory, url);
-
-        GradleBuilder.buildGradleProject(projectSourceDirectory);
-
-        File classesDirectory = FileUtils.getFile(projectSourceDirectory, "build/classes/java/main");
-        if (!classesDirectory.exists() || !classesDirectory.isDirectory()) {
-            throw new IllegalStateException();
-        }
-
-        File resourcesDirectory = FileUtils.getFile(projectSourceDirectory, "build/resources/main");
-        if (!resourcesDirectory.exists() || !resourcesDirectory.isDirectory()) {
-            throw new IllegalStateException();
-        }
-
-        // Create ClassLoader
-        ClassLoader classLoader = createClassLoader(projectSourceDirectory, classesDirectory, resourcesDirectory);
-
         // Setting ClassLoader
-        setClassLoader(classLoader);
-        getBeanFactory().setBeanClassLoader(classLoader);
+        setClassLoader(childClassLoader);
+        getBeanFactory().setBeanClassLoader(childClassLoader);
 
-        registerBean(DynamicComponentDefinitionPostProcessor.class, classLoader);
+        registerBean(DynamicComponentDefinitionPostProcessor.class, childClassLoader);
 
-        // Setting environment
+        // Setting the simplest environment, which won't add any PropertySources
         setEnvironment(new AbstractEnvironment() {
         });
 
@@ -74,55 +43,8 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         enableApplicationPropertiesOverriding();
 
         // Scan the root package of the project
-        String rootPackageName = getRootPackageName(classesDirectory);
+        String rootPackageName = getLongestPackagePrefix(childClassLoader.getClassesDirectory());
         scan(rootPackageName);
-    }
-
-    private void cloneWithRetries(String username, String password, File projectSourceDirectory, String urlArg) {
-        String url = tweakLocalDirectoryRemoteUrl(urlArg);
-        RetryTemplate cloneRetryTemplate = getCloneRetryTemplate();
-        cloneRetryTemplate.execute(retryContext -> {
-            GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
-            return null;
-        });
-    }
-
-    private String tweakLocalDirectoryRemoteUrl(String urlArg) {
-        boolean isRemoteLocalDirectoryPath = Stream.of(
-                "http:", "https:", "file:", "git@"
-        ).noneMatch(urlArg::startsWith);
-
-        if (isRemoteLocalDirectoryPath) {
-            // Add "file://" so that cloning would be done in a similar way as with remotes on the network.
-            // Plus, transform the path from relative to absolute.
-            return "file://" + Path.of(urlArg).toAbsolutePath().normalize();
-        } else {
-            return urlArg;
-        }
-    }
-
-    private RetryTemplate getCloneRetryTemplate() {
-        RetryTemplate cloneRetryTemplate = new RetryTemplate();
-
-        FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-        backOffPolicy.setBackOffPeriod(0L);
-        cloneRetryTemplate.setBackOffPolicy(backOffPolicy);
-
-        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
-        retryPolicy.setMaxAttempts(5);
-        cloneRetryTemplate.setRetryPolicy(retryPolicy);
-
-        return cloneRetryTemplate;
-    }
-
-    private ClassLoader createClassLoader(File projectSourceDirectory, File classesDirectory, File resourcesDirectory) {
-        String classLoaderName = projectSourceDirectory.getName();
-        return new OurUrlClassLoader(
-                classLoaderName,
-                getClass().getClassLoader(),
-                classesDirectory,
-                resourcesDirectory
-        );
     }
 
     /**
@@ -143,8 +65,9 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
 
         // Inserting them in the environment
 
-        // Determining the position of insertion
-        // The point is to put property sources loaded from the child class loader before those from the main context
+        // Determining the position of insertion.
+        // The point is to put property sources loaded from the child class loader before those from the main context.
+        // We'll do the insertion after systemProperties or systemEnvironment whichever goes last.
         String nameToAddAfter = Stream
                 .of("systemProperties", "systemEnvironment")
                 .map(propertySources::get)
@@ -156,7 +79,7 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         // Performing the insertion
         for (PropertySource<?> applicationPropertiesPropertySource : applicationPropertiesPropertySources) {
             String name = "Child: " + applicationPropertiesPropertySource.getName();
-            PropertySource<?> propertySource = new ProxyPropertySource(name, applicationPropertiesPropertySource);
+            PropertySource<?> propertySource = new DelegatingPropertySource(name, applicationPropertiesPropertySource);
             propertySources.addAfter(nameToAddAfter, propertySource);
             nameToAddAfter = name;
         }
@@ -195,8 +118,13 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         return environment.getPropertySources();
     }
 
-    private String getRootPackageName(File classesDirectory) {
-        List<String> rootPackageNameParts = new ArrayList<>();
+    /**
+     * @param classesDirectory A directory with hierarchical package subdirectories and .class files inside them
+     * @return The longest package prefix which all classes in {@code classesDirectory} share.
+     * This corresponds to the topmost package subdirectory with a .class file or with more than two subdirectories inside.
+     */
+    private String getLongestPackagePrefix(File classesDirectory) {
+        List<String> prefixNameParts = new ArrayList<>();
         File currentDirectory = classesDirectory;
         while (true) {
             File[] childFiles = currentDirectory.listFiles();
@@ -218,24 +146,17 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
                     .filter(File::isDirectory)
                     .toList();
             if (childDirectories.size() != 1) {
+                // Either this subdirectory has more than two subdirectories inside or it is completely empty.
+                // We stop the search in both cases.
                 break;
             }
+
+            // If we are here, then there is just one single subdirectory inside and no .class files.
+            // So all the .class files are further down, and all will have the subdirectory name in their package.
+            // We add this directory to the prefix and proceed further down.
             currentDirectory = childDirectories.get(0);
-
-            rootPackageNameParts.add(currentDirectory.getName());
+            prefixNameParts.add(currentDirectory.getName());
         }
-        return String.join(".", rootPackageNameParts);
-    }
-}
-
-class ProxyPropertySource extends PropertySource<PropertySource<?>> {
-
-    public ProxyPropertySource(String name, PropertySource source) {
-        super(name, source);
-    }
-
-    @Override
-    public Object getProperty(String name) {
-        return source.getProperty(name);
+        return String.join(".", prefixNameParts);
     }
 }

@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy;
+package org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy;
 
 import org.reflections.Reflections;
 import org.springframework.beans.BeansException;

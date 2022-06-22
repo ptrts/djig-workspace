@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext.remote;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.taruts.dynamicJava.app.RefreshController;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicImplProperties;
 
 import java.net.URI;
 import java.net.URISyntaxException;

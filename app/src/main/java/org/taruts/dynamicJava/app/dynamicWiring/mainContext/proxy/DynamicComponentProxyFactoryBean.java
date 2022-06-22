@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy;
+package org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy;
 
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.cglib.proxy.CallbackHelper;
