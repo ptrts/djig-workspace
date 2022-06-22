@@ -6,6 +6,9 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 
+/**
+ * Loads the dynamic code on application startup
+ */
 @Profile({"dev", "prod"})
 @Component
 public class DynamicProjectInitializer {

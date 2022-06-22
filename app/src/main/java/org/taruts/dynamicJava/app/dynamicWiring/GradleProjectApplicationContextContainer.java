@@ -8,7 +8,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.app.dynamicWiring.proxy.DynamicComponentProxy;
+import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy.DynamicComponentProxy;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.io.File;

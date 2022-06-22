@@ -7,7 +7,6 @@ import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
-import org.gitlab4j.api.models.Setting;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.reactive.context.ReactiveWebServerApplicationContext;
 import org.springframework.context.SmartLifecycle;
@@ -15,6 +14,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.taruts.dynamicJava.app.RefreshController;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -22,6 +22,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+/**
+ * Registers a webhook in the dynamic code GitLab project when the application has started and removes the hook on shutdown.
+ * The webhook notifies the application when a new version of the dynamic code has been pushed.
+ *
+ * @see RefreshController
+ */
 @Profile({"dev", "prod"})
 @Component
 @Slf4j
@@ -45,13 +51,6 @@ public class GitlabHookRegistrar implements SmartLifecycle {
         }
 
         withProject((gitLabApi, project) -> {
-
-            try {
-                gitLabApi.getApplicationSettingsApi().updateApplicationSetting(Setting.ALLOW_LOCAL_REQUESTS_FROM_SYSTEM_HOOKS, true);
-                gitLabApi.getApplicationSettingsApi().updateApplicationSetting(Setting.ALLOW_LOCAL_REQUESTS_FROM_WEB_HOOKS_AND_SERVICES, true);
-            } catch (GitLabApiException e) {
-                throw new RuntimeException(e);
-            }
 
             DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
 
@@ -98,9 +97,9 @@ public class GitlabHookRegistrar implements SmartLifecycle {
             return;
         }
 
-        withProject((gitLabApi, project) -> {
-            deleteHooks(gitLabApi, project, hookUri);
-        });
+        withProject((gitLabApi, project) ->
+                deleteHooks(gitLabApi, project, hookUri)
+        );
 
         running = false;
     }

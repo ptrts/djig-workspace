@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.taruts.dynamicJava.app.dynamicWiring.proxy.DelegateNotSetException;
+import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy.DelegateNotSetException;
 import org.taruts.dynamicJava.dynamicApi.dynamic.MessageProvider;
 
 @RestController

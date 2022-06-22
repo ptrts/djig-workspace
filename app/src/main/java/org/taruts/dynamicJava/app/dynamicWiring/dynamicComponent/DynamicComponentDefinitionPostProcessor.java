@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.proxy;
+package org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,15 +8,23 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.Ordered;
+import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.proxy.DynamicComponentProxy;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.util.Arrays;
 import java.util.Set;
 
+/**
+ * A {@link BeanDefinitionRegistryPostProcessor} enabling dynamic components to inject their fellow dynamic components
+ * themselves rather than their proxies from the main context.
+ * This is done by making every dynamic component bean in the child context @{@link Primary}.
+ * The class must be used with the dynamic child Spring context only, not with the main context.
+ */
 @Slf4j
 @RequiredArgsConstructor
-public class DynamicComponentsBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, Ordered {
+public class DynamicComponentDefinitionPostProcessor implements BeanDefinitionRegistryPostProcessor, Ordered {
 
     final ClassLoader classLoader;
 
@@ -31,23 +39,15 @@ public class DynamicComponentsBeanDefinitionRegistryPostProcessor implements Bea
         Reflections reflections = new Reflections(DynamicComponent.class.getPackageName());
         Set<Class<? extends DynamicComponent>> dynamicComponentInterfaces = reflections.getSubTypesOf(DynamicComponent.class);
 
-        // Обходим все бины какие есть
+        // Looping through all the beans in the registry
         for (String beanDefinitionName : registry.getBeanDefinitionNames()) {
             BeanDefinition beanDefinition = registry.getBeanDefinition(beanDefinitionName);
-            String beanClassName = beanDefinition.getBeanClassName();
+            Class<?> clazz = getBeanClass(beanDefinition);
 
-            // Получаем класс текущего бина
-            Class<?> clazz;
-            try {
-                clazz = Class.forName(beanClassName, false, classLoader);
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-
-            // Смотрим, имеет ли он отношение к динамическим интерфейсам
+            // Does it implement the marker interface DynamicComponent (which every dynamic component interface must extend)?
             if (DynamicComponent.class.isAssignableFrom(clazz)) {
 
-                // Получаем какой-либо из его динамических интерфейсов
+                // Now we ensure that the bean class implements a dynamic component interface that extends DynamicComponent.
                 Class<? extends DynamicComponent> firstDynamicInterface = Arrays
                         .stream(clazz.getInterfaces())
                         .filter(DynamicComponent.class::isAssignableFrom)
@@ -60,10 +60,6 @@ public class DynamicComponentsBeanDefinitionRegistryPostProcessor implements Bea
                         .orElse(null);
 
                 if (firstDynamicInterface != null) {
-
-                    // Этот класс имплементирует один из динамических интерфейсов
-                    // Это может быть прокся из основного контекста, или делегат из дочернего
-
                     boolean isProxy = DynamicComponentProxy.class.isAssignableFrom(clazz);
                     if (isProxy) {
                         throw new IllegalStateException("" +
@@ -73,8 +69,6 @@ public class DynamicComponentsBeanDefinitionRegistryPostProcessor implements Bea
                                 "so the BeanDefinitionRegistry should not see beans from the main context"
                         );
                     } else {
-                        // Если динамический компонент хочет заинжектить к себе другой,
-                        // то он должен получить не его проксю из основного контекста, а исходный компонент
                         beanDefinition.setPrimary(true);
                     }
                 }
@@ -84,5 +78,16 @@ public class DynamicComponentsBeanDefinitionRegistryPostProcessor implements Bea
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+    }
+
+    private Class<?> getBeanClass(BeanDefinition beanDefinition) {
+        Class<?> clazz;
+        try {
+            String beanClassName = beanDefinition.getBeanClassName();
+            clazz = Class.forName(beanClassName, false, classLoader);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return clazz;
     }
 }

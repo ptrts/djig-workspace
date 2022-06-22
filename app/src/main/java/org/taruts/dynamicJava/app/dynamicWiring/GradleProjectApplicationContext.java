@@ -1,6 +1,5 @@
 package org.taruts.dynamicJava.app.dynamicWiring;
 
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
@@ -15,14 +14,11 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
-import org.taruts.dynamicJava.app.dynamicWiring.proxy.DynamicComponentsBeanDefinitionRegistryPostProcessor;
+import org.taruts.dynamicJava.app.dynamicWiring.dynamicComponent.DynamicComponentDefinitionPostProcessor;
 import org.taruts.gitUtils.GitUtils;
 import org.taruts.gradleUtils.GradleBuilder;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,33 +29,18 @@ import java.util.stream.Stream;
 @Slf4j
 public class GradleProjectApplicationContext extends AnnotationConfigApplicationContext {
 
-    private final RetryTemplate cloneRetryTemplate = new RetryTemplate();
-
     public GradleProjectApplicationContext(
             ApplicationContext parent,
-            String urlArg,
+            String url,
             String username,
             String password,
             File projectSourceDirectory
     ) {
-        boolean directoryUrl = Stream.of(
-                "http:", "https:", "file:", "git@"
-        ).noneMatch(urlArg::startsWith);
 
-        String url;
-        if (directoryUrl) {
-            // Во-первых, ко всем файловым URL без file:// в начале мы будем добавлять file://
-            // Это нужно для того, чтобы клонирование осуществлялось не копированием файлов, а тем же самым кодом в Git, который используется для сетевых URL
-            // Соответственно, здесь мы также должны делать из относительных путей абсолютные
-            url = "file://" + Path.of(urlArg).toAbsolutePath().normalize();
-        } else {
-            url = urlArg;
-        }
+        // todo Вытащить сие из контекста?
+        //      Может сделать так, чтобы контекст делался уже из готового class loader?
 
-        cloneRetryTemplate.execute(retryContext -> {
-            GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
-            return null;
-        });
+        cloneWithRetries(username, password, projectSourceDirectory, url);
 
         GradleBuilder.buildGradleProject(projectSourceDirectory);
 
@@ -74,32 +55,55 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         }
 
         // Create ClassLoader
-        String classLoaderName = projectSourceDirectory.getName();
-        ClassLoader classLoader = createClassLoader(classLoaderName, classesDirectory, resourcesDirectory);
+        ClassLoader classLoader = createClassLoader(projectSourceDirectory, classesDirectory, resourcesDirectory);
 
         // Setting ClassLoader
         setClassLoader(classLoader);
         getBeanFactory().setBeanClassLoader(classLoader);
 
-        registerBean(DynamicComponentsBeanDefinitionRegistryPostProcessor.class, classLoader);
+        registerBean(DynamicComponentDefinitionPostProcessor.class, classLoader);
 
         // Setting environment
-        ConfigurableEnvironment environment = new AbstractEnvironment() {
-        };
-        setEnvironment(environment);
+        setEnvironment(new AbstractEnvironment() {
+        });
 
-        // Здесь родительский Environment будет подмержен к нашему Environment
+        // Setting the parent.
+        // This also merges the parent Environment into the child context Environment.
         setParent(parent);
 
-        tweakEnvironment(environment, classLoader);
+        enableApplicationPropertiesOverriding();
 
         // Scan the root package of the project
         String rootPackageName = getRootPackageName(classesDirectory);
         scan(rootPackageName);
     }
 
-    @PostConstruct
-    private void init() {
+    private void cloneWithRetries(String username, String password, File projectSourceDirectory, String urlArg) {
+        String url = tweakLocalDirectoryRemoteUrl(urlArg);
+        RetryTemplate cloneRetryTemplate = getCloneRetryTemplate();
+        cloneRetryTemplate.execute(retryContext -> {
+            GitUtils.cloneOrUpdate(url, username, password, projectSourceDirectory);
+            return null;
+        });
+    }
+
+    private String tweakLocalDirectoryRemoteUrl(String urlArg) {
+        boolean isRemoteLocalDirectoryPath = Stream.of(
+                "http:", "https:", "file:", "git@"
+        ).noneMatch(urlArg::startsWith);
+
+        if (isRemoteLocalDirectoryPath) {
+            // Add "file://" so that cloning would be done in a similar way as with remotes on the network.
+            // Plus, transform the path from relative to absolute.
+            return "file://" + Path.of(urlArg).toAbsolutePath().normalize();
+        } else {
+            return urlArg;
+        }
+    }
+
+    private RetryTemplate getCloneRetryTemplate() {
+        RetryTemplate cloneRetryTemplate = new RetryTemplate();
+
         FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
         backOffPolicy.setBackOffPeriod(0L);
         cloneRetryTemplate.setBackOffPolicy(backOffPolicy);
@@ -107,18 +111,40 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
         SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
         retryPolicy.setMaxAttempts(5);
         cloneRetryTemplate.setRetryPolicy(retryPolicy);
+
+        return cloneRetryTemplate;
     }
 
-    private void tweakEnvironment(ConfigurableEnvironment environment, ClassLoader classLoader) {
+    private ClassLoader createClassLoader(File projectSourceDirectory, File classesDirectory, File resourcesDirectory) {
+        String classLoaderName = projectSourceDirectory.getName();
+        return new OurUrlClassLoader(
+                classLoaderName,
+                getClass().getClassLoader(),
+                classesDirectory,
+                resourcesDirectory
+        );
+    }
+
+    /**
+     * Add {@link PropertySource}s for application*.properties files of the dynamic project
+     */
+    private void enableApplicationPropertiesOverriding() {
+
+        ClassLoader classLoader = getClassLoader();
+        ConfigurableEnvironment environment = getEnvironment();
 
         MutablePropertySources propertySources = environment.getPropertySources();
 
-        // Получаем список объектов PropertySource для файлов типа application-dev.properties или application.properties
-        MutablePropertySources applicationPropertiesPropertySources = getApplicationPropertiesPropertySources(classLoader, environment.getActiveProfiles());
+        // Getting a list of PropertySource for files like application-dev.properties and application.properties
+        MutablePropertySources applicationPropertiesPropertySources = getApplicationPropertiesPropertySources(
+                classLoader,
+                environment.getActiveProfiles()
+        );
 
-        // Вставляем их куда надо в нашу пачку из PropertySource
+        // Inserting them in the environment
 
-        // Ищем имя PropertySource, после которого мы будем делать вставку своих
+        // Determining the position of insertion
+        // The point is to put property sources loaded from the child class loader before those from the main context
         String nameToAddAfter = Stream
                 .of("systemProperties", "systemEnvironment")
                 .map(propertySources::get)
@@ -127,7 +153,7 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
                 .map(PropertySource::getName)
                 .orElseThrow(() -> new IllegalStateException("Neither of property sources systemProperties or systemEnvironment is found"));
 
-        // Делаем вставку
+        // Performing the insertion
         for (PropertySource<?> applicationPropertiesPropertySource : applicationPropertiesPropertySources) {
             String name = "Child: " + applicationPropertiesPropertySource.getName();
             PropertySource<?> propertySource = new ProxyPropertySource(name, applicationPropertiesPropertySource);
@@ -135,18 +161,37 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
             nameToAddAfter = name;
         }
 
-        // PropertySource configurationProperties выглядит как лишняя деталь
-        // Он содержит внутри себя тот же самый список из объектов PropertySource, в котором сидит сам
-        // Чем создавать такой же как в родительском контексте здесь у себя, пусть лучше у нас его просто не будет
+        // The PropertySource configurationProperties looks like a useless component in all this.
+        // It contains the same list of PropertySource objects it itself sits in.
         propertySources.remove("configurationProperties");
     }
 
+    /**
+     * Build standard {@link MutablePropertySources} of Spring Boot according to the active profiles and application*.properties files
+     * on the class path.
+     * <p>
+     * Properties in application*.properties files in the dynamic project override properties of such files in the main application.
+     * <p>
+     * Again. It's not files overriding files. It's properties overriding properties.
+     * <p>
+     * Properties from the main application-dev.properties stay if they are not specified in the dynamic file with that name.
+     */
     private MutablePropertySources getApplicationPropertiesPropertySources(ClassLoader classLoader, String[] activeProfiles) {
+
+        // We will use a temporary Environment object here
         ConfigurableEnvironment environment = new AbstractEnvironment() {
         };
         environment.setActiveProfiles(activeProfiles);
+
+        // We use the standard Spring Boot ConfigDataEnvironmentPostProcessor to populate the temporary Environment
+        // with standard Spring Boot configuration property sources.
+        // The property sources will include those for profile .property and YAML files.
+        // The configuration property files might come from the main application (main class loader) or be overridden in the
+        // dynamic project (child class loader).
         ResourceLoader resourceLoader = new DefaultResourceLoader(classLoader);
         ConfigDataEnvironmentPostProcessor.applyTo(environment, resourceLoader, null);
+
+        // Return the populated property sources in the temporary Environment
         return environment.getPropertySources();
     }
 
@@ -180,33 +225,6 @@ public class GradleProjectApplicationContext extends AnnotationConfigApplication
             rootPackageNameParts.add(currentDirectory.getName());
         }
         return String.join(".", rootPackageNameParts);
-    }
-
-    @SneakyThrows
-    private ClassLoader createClassLoader(String classLoaderName, File classesDirectory, File resourcesDirectory) {
-
-        URL classesUrl = UriComponentsBuilder
-                .fromUri(classesDirectory.toURI())
-                .scheme("file")
-                .build()
-                .toUri()
-                .toURL();
-
-        URL resourcesUrl = UriComponentsBuilder
-                .fromUri(resourcesDirectory.toURI())
-                .scheme("file")
-                .build()
-                .toUri()
-                .toURL();
-
-        return new OurUrlClassLoader(
-                classLoaderName,
-                new URL[]{
-                        classesUrl,
-                        resourcesUrl
-                },
-                getClass().getClassLoader()
-        );
     }
 }
 
