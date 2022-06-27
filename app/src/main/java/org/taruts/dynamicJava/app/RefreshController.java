@@ -2,11 +2,13 @@ package org.taruts.dynamicJava.app;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsProperties;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.GradleProjectApplicationContextContainer;
 
 /**
@@ -15,26 +17,30 @@ import org.taruts.dynamicJava.app.dynamicWiring.childContext.GradleProjectApplic
  * Such requests are expected to come from a GitLab webhook.
  */
 @RestController
-@RequestMapping("refresh")
+@RequestMapping("refresh/{dynamicProjectName}")
 @Slf4j
 public class RefreshController {
 
     @Autowired
     private GradleProjectApplicationContextContainer gradleProjectApplicationContextContainer;
 
-    @GetMapping
-    @Async
-    public void getRefresh() {
-        refresh();
+    @Autowired
+    private DynamicProjectsProperties dynamicProjectsProperties;
+
+    @Autowired
+    private TaskExecutor taskExecutor;
+
+    @RequestMapping(method = {RequestMethod.GET, RequestMethod.POST})
+    public void getOrPost(@PathVariable("dynamicProjectName") String dynamicProjectName) {
+        refreshAsync(dynamicProjectName);
     }
 
-    @PostMapping
-    @Async
-    public void postRefresh() {
-        refresh();
+    private void refreshAsync(String dynamicProjectName) {
+        taskExecutor.execute(() -> refresh(dynamicProjectName));
     }
 
-    private void refresh() {
-        gradleProjectApplicationContextContainer.refresh();
+    private void refresh(String dynamicProjectName) {
+        DynamicProjectProperties dynamicProjectProperties = dynamicProjectsProperties.get(dynamicProjectName);
+        gradleProjectApplicationContextContainer.refresh(dynamicProjectName, dynamicProjectProperties);
     }
 }

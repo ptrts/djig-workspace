@@ -5,13 +5,14 @@ import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group
 import org.gitlab4j.api.models.Project
+import org.taruts.gitUtils.GitRemoteUrlParser
 
 object LocalGitLabProjectCreator {
 
     fun recreateGroupAndProject(localGitLabParameters: GitLabParameters) {
         val gitLabApi: GitLabApi = getGitLabApi(localGitLabParameters)
-        val projectUriParceResult = GitLabProjectUriParser.parse(localGitLabParameters.projectUri)
-        val group: Group = getOrCreateGroup(gitLabApi, projectUriParceResult.groupPath)
+        val projectUriParceResult = GitRemoteUrlParser.parse(localGitLabParameters.projectUri)
+        val group: Group = getOrCreateGroup(gitLabApi, projectUriParceResult.namespace)
         recreateProject(gitLabApi, group, projectUriParceResult.projectName)
     }
 

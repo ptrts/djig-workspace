@@ -1,8 +1,7 @@
-package org.taruts.dynamicJava.app.dynamicWiring.childContext;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext.context;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.reflections.Reflections;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -14,7 +13,6 @@ import org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy.DynamicCompone
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.util.Arrays;
-import java.util.Set;
 
 /**
  * A {@link BeanDefinitionRegistryPostProcessor} enabling dynamic components to inject their fellow dynamic components
@@ -36,9 +34,6 @@ public class DynamicComponentDefinitionPostProcessor implements BeanDefinitionRe
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
 
-        Reflections reflections = new Reflections(DynamicComponent.class.getPackageName());
-        Set<Class<? extends DynamicComponent>> dynamicComponentInterfaces = reflections.getSubTypesOf(DynamicComponent.class);
-
         // Looping through all the beans in the registry
         for (String beanDefinitionName : registry.getBeanDefinitionNames()) {
             BeanDefinition beanDefinition = registry.getBeanDefinition(beanDefinitionName);
@@ -47,17 +42,8 @@ public class DynamicComponentDefinitionPostProcessor implements BeanDefinitionRe
             // Does it implement the marker interface DynamicComponent (which every dynamic component interface must extend)?
             if (DynamicComponent.class.isAssignableFrom(clazz)) {
 
-                // Now we ensure that the bean class implements a dynamic component interface that extends DynamicComponent.
-                Class<? extends DynamicComponent> firstDynamicInterface = Arrays
-                        .stream(clazz.getInterfaces())
-                        .filter(DynamicComponent.class::isAssignableFrom)
-                        .map(currentInterface -> {
-                            //noinspection unchecked
-                            return (Class<? extends DynamicComponent>) currentInterface;
-                        })
-                        .filter(dynamicComponentInterfaces::contains)
-                        .findFirst()
-                        .orElse(null);
+                // Now we make sure that the bean class implements a dynamic component interface that extends DynamicComponent.
+                Class<? extends DynamicComponent> firstDynamicInterface = getFirstDynamicInterface(clazz);
 
                 if (firstDynamicInterface != null) {
                     boolean isProxy = DynamicComponentProxy.class.isAssignableFrom(clazz);
@@ -89,5 +75,17 @@ public class DynamicComponentDefinitionPostProcessor implements BeanDefinitionRe
             throw new RuntimeException(e);
         }
         return clazz;
+    }
+
+    private Class<? extends DynamicComponent> getFirstDynamicInterface(Class<?> clazz) {
+        return Arrays
+                .stream(clazz.getInterfaces())
+                .filter(DynamicComponent.class::isAssignableFrom)
+                .map(currentInterface -> {
+                    //noinspection unchecked
+                    return (Class<? extends DynamicComponent>) currentInterface;
+                })
+                .findFirst()
+                .orElse(null);
     }
 }

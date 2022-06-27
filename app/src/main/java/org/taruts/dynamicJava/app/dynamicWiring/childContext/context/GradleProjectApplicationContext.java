@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.childContext;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext.context;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;

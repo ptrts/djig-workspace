@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.childContext;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext.context;
 
 import org.springframework.core.env.PropertySource;
 

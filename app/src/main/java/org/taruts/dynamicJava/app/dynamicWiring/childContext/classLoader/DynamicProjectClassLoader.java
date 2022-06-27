@@ -31,7 +31,7 @@ public class DynamicProjectClassLoader extends URLClassLoader {
     /**
      * First we look for a resource among those of this class loader
      * and only after that we delegate to the parent.
-     * The original implementation works in the opposite way.
+     * The original implementation {@link ClassLoader#getResource(String)} works in the opposite way.
      * We changed the order this way to enable the dynamic code to override properties in application*.properties files
      * of the main Spring context (of the main class loader).
      */

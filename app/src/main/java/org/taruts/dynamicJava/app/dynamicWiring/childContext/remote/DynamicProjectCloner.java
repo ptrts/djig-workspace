@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 @Component
-public class DynamicProjectGitRemoteService {
+public class DynamicProjectCloner {
 
     @Autowired
     private CloneRetryTemplate cloneRetryTemplate;

@@ -1,6 +1,5 @@
 package org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy;
 
-import org.springframework.beans.factory.FactoryBean;
 import org.springframework.cglib.proxy.CallbackHelper;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.MethodInterceptor;
@@ -11,31 +10,22 @@ import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 import java.lang.reflect.Method;
 
 /**
- * {@link FactoryBean} creating a {@link DynamicComponentProxy} for a particular dynamic interface.
+ * A factory creating a {@link DynamicComponentProxy} for a particular dynamic interface.
  * The proxy is created by means of CGLIB, repackaged in Spring Core.
- *
- * @param <DynamicInterface> the dynamic interface implementations of which this proxy proxies
  */
-public class DynamicComponentProxyFactoryBean<DynamicInterface extends DynamicComponent> implements FactoryBean<DynamicComponentProxy<DynamicInterface>> {
+public class DynamicComponentProxyFactory {
 
     private static final DynamicInterfaceMethodInterceptor DYNAMIC_INTERFACE_METHOD_INTERCEPTOR = new DynamicInterfaceMethodInterceptor();
 
-    private final Class<DynamicInterface> dynamicInterface;
-
     /**
-     * @param dynamicInterface The dynamic interface the created bean will proxy
+     * Creates a {@link DynamicComponentProxy} for a particular dynamic interface.
+     * The proxy is created by means of CGLIB, repackaged in Spring Core.
+     * The delegate of the created proxy is not set.
+     *
+     * @param <DynamicInterface> the dynamic interface implementations of which this proxy proxies
      */
-    public DynamicComponentProxyFactoryBean(Class<DynamicInterface> dynamicInterface) {
-        this.dynamicInterface = dynamicInterface;
-    }
-
-    @Override
-    public Class<DynamicInterface> getObjectType() {
-        return dynamicInterface;
-    }
-
-    @Override
-    public DynamicComponentProxy<DynamicInterface> getObject() {
+    @SuppressWarnings("unused")
+    public <DynamicInterface extends DynamicComponent> DynamicInterface createProxy(Class<DynamicInterface> dynamicInterface) {
 
         // Here's a good article about how to use CGLIB
         //https://www.javacodegeeks.com/2013/12/cglib-the-missing-manual.html
@@ -64,7 +54,7 @@ public class DynamicComponentProxyFactoryBean<DynamicInterface extends DynamicCo
         enhancer.setCallbackFilter(callbackHelper);
 
         //noinspection unchecked
-        return (DynamicComponentProxy<DynamicInterface>) enhancer.create();
+        return (DynamicInterface) enhancer.create();
     }
 
     /**

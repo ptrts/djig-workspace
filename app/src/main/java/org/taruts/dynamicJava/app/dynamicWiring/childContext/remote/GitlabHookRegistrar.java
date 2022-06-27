@@ -9,22 +9,27 @@ import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectHook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.reactive.context.ReactiveWebServerApplicationContext;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.taruts.dynamicJava.app.OurSmartLifecycle;
 import org.taruts.dynamicJava.app.RefreshController;
 import org.taruts.dynamicJava.app.dynamicWiring.DynamicImplProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsProperties;
 
+import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 
 /**
- * Registers a webhook in the dynamic code GitLab project when the application has started and removes the hook on shutdown.
+ * For any dynamic project registers a webhook in the dynamic code GitLab project, after the application has started
+ * and removes the hook on shutdown.
  * The webhook notifies the application when a new version of the dynamic code has been pushed.
  *
  * @see RefreshController
@@ -32,9 +37,12 @@ import java.util.function.BiConsumer;
 @Profile({"dev", "prod"})
 @Component
 @Slf4j
-public class GitlabHookRegistrar implements SmartLifecycle {
+public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
 
-    private boolean running = false;
+    private static final Comparator<URL> URL_COMPARATOR = Comparator
+            .comparing(URL::getHost)
+            .thenComparing(URL::getPort)
+            .thenComparing(URL::getPath);
 
     @Autowired
     private DynamicImplProperties dynamicImplProperties;
@@ -42,76 +50,72 @@ public class GitlabHookRegistrar implements SmartLifecycle {
     @Autowired
     private ReactiveWebServerApplicationContext reactiveWebServerApplicationContext;
 
+    @Autowired
+    private DynamicProjectsProperties dynamicProjectsProperties;
+
     @Override
-    @SneakyThrows
-    public void start() {
-
-        URI hookUri = getHookUri();
-        if (hookUri == null) {
-            return;
-        }
-
-        withProject((gitLabApi, project) -> {
-
-            DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
-
-            boolean enableSslVerification = gitRepositoryProperties.getHook().isSslVerification();
-            String secretToken = gitRepositoryProperties.getHook().getSecretToken();
-
-            deleteHooks(gitLabApi, project, hookUri);
-
-            ProjectHook enabledHooks = new ProjectHook();
-
-            //@formatter:off
-            enabledHooks.setPushEvents               (true);
-            enabledHooks.setPushEventsBranchFilter   ("master");
-            enabledHooks.setIssuesEvents             (false);
-            enabledHooks.setConfidentialIssuesEvents (false);
-            enabledHooks.setMergeRequestsEvents      (false);
-            enabledHooks.setTagPushEvents            (false);
-            enabledHooks.setNoteEvents               (false);
-            enabledHooks.setConfidentialNoteEvents   (false);
-            enabledHooks.setJobEvents                (false);
-            enabledHooks.setPipelineEvents           (false);
-            enabledHooks.setWikiPageEvents           (false);
-            enabledHooks.setRepositoryUpdateEvents   (false);
-            enabledHooks.setDeploymentEvents         (false);
-            enabledHooks.setReleasesEvents           (false);
-            enabledHooks.setDeploymentEvents         (false);
-            //@formatter:on
-
-            try {
-                gitLabApi.getProjectApi().addHook(project.getId(), hookUri.toString(), enabledHooks, enableSslVerification, secretToken);
-            } catch (GitLabApiException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        running = true;
+    public int getOrder() {
+        return -1;
     }
 
     @Override
-    public void stop() {
+    public void doStart() {
+        dynamicProjectsProperties.forEach(this::replaceHook);
+    }
 
-        URI hookUri = getHookUri();
+    @Override
+    public void doStop() {
+        dynamicProjectsProperties.keySet().forEach(this::deleteDynamicProjectHooks);
+    }
+
+    private void deleteDynamicProjectHooks(String dynamicProjectName) {
+        URL hookUri = getHookUrl(dynamicProjectName);
         if (hookUri == null) {
             return;
         }
-
-        withProject((gitLabApi, project) ->
-                deleteHooks(gitLabApi, project, hookUri)
+        withGitLabProject((gitLabApi, gitLabProject) ->
+                deleteHooksByUrl(gitLabApi, gitLabProject, hookUri)
         );
-
-        running = false;
     }
 
-    @Override
-    public boolean isRunning() {
-        return running;
+    private void replaceHook(String dynamicProjectName, DynamicProjectProperties dynamicProjectProperties) {
+        URL hookUrl = getHookUrl(dynamicProjectName);
+        if (hookUrl == null) {
+            return;
+        }
+        withGitLabProject((gitLabApi, gitLabProject) -> {
+            deleteHooksByUrl(gitLabApi, gitLabProject, hookUrl);
+            addHook(gitLabApi, gitLabProject, hookUrl);
+        });
     }
 
     @SneakyThrows
-    private void withProject(BiConsumer<GitLabApi, Project> useProject) {
+    private URL getHookUrl(String dynamicProjectName) {
+        DynamicImplProperties.GitRepository.Hook hookProperties = dynamicImplProperties.getGitRepository().getHook();
+
+        String host = hookProperties.getHost();
+        if (StringUtils.isBlank(host)) {
+            return null;
+        }
+
+        String protocol = hookProperties.getProtocol();
+
+        int ourServletContainerPort = reactiveWebServerApplicationContext.getWebServer().getPort();
+
+        return UriComponentsBuilder
+                .newInstance()
+                .scheme(protocol)
+                .host(host)
+                .port(ourServletContainerPort)
+                .replacePath("refresh")
+                .path(dynamicProjectName)
+                .build()
+                .toUri()
+                .toURL();
+    }
+
+    @SneakyThrows
+    private void withGitLabProject(BiConsumer<GitLabApi, Project> useProject) {
         DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
         String repositoryUrlStr = gitRepositoryProperties.getUrl();
         String username = gitRepositoryProperties.getUsername();
@@ -124,7 +128,7 @@ public class GitlabHookRegistrar implements SmartLifecycle {
                 .substring(
                         // After the first "/"
                         1,
-                        // Until the trailing ".git"
+                        // Up to the trailing ".git"
                         repositoryPath.lastIndexOf(".git")
                 );
 
@@ -145,38 +149,61 @@ public class GitlabHookRegistrar implements SmartLifecycle {
         }
     }
 
-    @SneakyThrows
-    private void deleteHooks(GitLabApi gitLabApi, Project project, URI hookUri) {
-        List<ProjectHook> hooks = gitLabApi.getProjectApi().getHooks(project.getId());
-        hooks.stream().filter(currentHook -> {
+    private void deleteHooksByUrl(GitLabApi gitLabApi, Project project, URL hookUrl) {
+        List<ProjectHook> hooksToDelete = findHooksToDeleteByUrl(gitLabApi, project, hookUrl);
+        hooksToDelete.forEach(hookToDelete -> {
             try {
-                URI currentHookUri = new URI(currentHook.getUrl());
-                return Objects.equals(currentHookUri.getHost(), hookUri.getHost());
-            } catch (URISyntaxException e) {
-                return true;
-            }
-        }).forEach(currentHook -> {
-            try {
-                gitLabApi.getProjectApi().deleteHook(currentHook);
+                gitLabApi.getProjectApi().deleteHook(hookToDelete);
             } catch (GitLabApiException e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    private URI getHookUri() {
-        String host = dynamicImplProperties.getGitRepository().getHook().getHost();
-        if (StringUtils.isBlank(host)) {
-            return null;
+    @SneakyThrows
+    private List<ProjectHook> findHooksToDeleteByUrl(GitLabApi gitLabApi, Project project, URL hookUrl) {
+        List<ProjectHook> allProjectHooks = gitLabApi.getProjectApi().getHooks(project.getId());
+        return allProjectHooks.stream().filter(currentHook -> {
+            try {
+                URL currentHookUrl = new URL(currentHook.getUrl());
+                return URL_COMPARATOR.compare(currentHookUrl, hookUrl) == 0;
+            } catch (MalformedURLException e) {
+                // All bad URLs must be deleted
+                return true;
+            }
+        }).toList();
+    }
+
+    private void addHook(GitLabApi gitLabApi, Project gitLabProject, URL hookUrl) {
+        DynamicImplProperties.GitRepository.Hook hookProperties = dynamicImplProperties.getGitRepository().getHook();
+
+        boolean enableSslVerification = hookProperties.isSslVerification();
+        String secretToken = hookProperties.getSecretToken();
+
+        ProjectHook enabledHooks = new ProjectHook();
+
+        //@formatter:off
+        enabledHooks.setPushEvents               (true);
+        enabledHooks.setPushEventsBranchFilter   ("master");
+        enabledHooks.setIssuesEvents             (false);
+        enabledHooks.setConfidentialIssuesEvents (false);
+        enabledHooks.setMergeRequestsEvents      (false);
+        enabledHooks.setTagPushEvents            (false);
+        enabledHooks.setNoteEvents               (false);
+        enabledHooks.setConfidentialNoteEvents   (false);
+        enabledHooks.setJobEvents                (false);
+        enabledHooks.setPipelineEvents           (false);
+        enabledHooks.setWikiPageEvents           (false);
+        enabledHooks.setRepositoryUpdateEvents   (false);
+        enabledHooks.setDeploymentEvents         (false);
+        enabledHooks.setReleasesEvents           (false);
+        enabledHooks.setDeploymentEvents         (false);
+        //@formatter:on
+
+        try {
+            gitLabApi.getProjectApi().addHook(gitLabProject.getId(), hookUrl.toString(), enabledHooks, enableSslVerification, secretToken);
+        } catch (GitLabApiException e) {
+            throw new RuntimeException(e);
         }
-        String protocol = dynamicImplProperties.getGitRepository().getHook().getProtocol();
-        return UriComponentsBuilder
-                .newInstance()
-                .scheme(protocol)
-                .host(host)
-                .port(reactiveWebServerApplicationContext.getWebServer().getPort())
-                .replacePath("refresh")
-                .build()
-                .toUri();
     }
 }

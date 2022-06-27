@@ -2,6 +2,7 @@ package org.taruts.dynamicJava.app;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +15,7 @@ import org.taruts.dynamicJava.dynamicApi.dynamic.MessageProvider;
 public class MainController {
 
     @Autowired
+    @Qualifier("dynamic-project-1")
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     private MessageProvider messageProvider;
 
