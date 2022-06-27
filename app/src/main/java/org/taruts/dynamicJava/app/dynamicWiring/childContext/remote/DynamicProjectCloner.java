@@ -2,7 +2,6 @@ package org.taruts.dynamicJava.app.dynamicWiring.childContext.remote;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.source.DynamicProjectLocalGitRepo;
 import org.taruts.gitUtils.GitUtils;
 
 import java.io.File;
@@ -15,11 +14,11 @@ public class DynamicProjectCloner {
     @Autowired
     private CloneRetryTemplate cloneRetryTemplate;
 
-    public DynamicProjectLocalGitRepo cloneWithRetries(DynamicProjectGitRemote remote, File projectSourceDirectory) {
+    public void cloneWithRetries(DynamicProjectGitRemote remote, File projectSourceDirectory) {
         String url = tweakLocalDirectoryRemoteUrl(remote.url());
-        return cloneRetryTemplate.execute(retryContext -> {
+        cloneRetryTemplate.execute(retryContext -> {
             GitUtils.cloneOrUpdate(url, remote.username(), remote.password(), projectSourceDirectory);
-            return new DynamicProjectLocalGitRepo(remote, projectSourceDirectory);
+            return null;
         });
     }
 

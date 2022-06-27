@@ -15,7 +15,6 @@ import org.taruts.dynamicJava.app.dynamicWiring.childContext.context.GradleProje
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuild;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuildService;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.remote.DynamicProjectCloner;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.source.DynamicProjectLocalGitRepo;
 import org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy.DynamicComponentProxy;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
@@ -32,7 +31,7 @@ public class DynamicProjectContextManager {
     private ApplicationContext mainContext;
 
     @Autowired
-    private DynamicProjectCloner dynamicProjectGitRemoteService;
+    private DynamicProjectCloner dynamicProjectCloner;
 
     @Autowired
     private DynamicProjectGradleBuildService dynamicProjectGradleBuildService;
@@ -55,13 +54,13 @@ public class DynamicProjectContextManager {
     private GradleProjectApplicationContext createNewChildContext(DynamicProject dynamicProject) {
 
         // Clone
-        DynamicProjectLocalGitRepo dynamicProjectLocalGitRepo = dynamicProjectGitRemoteService.cloneWithRetries(
+        dynamicProjectCloner.cloneWithRetries(
                 dynamicProject.getRemote(),
                 dynamicProject.getSourceDirectory()
         );
 
         // Build
-        DynamicProjectGradleBuild build = dynamicProjectGradleBuildService.build(dynamicProjectLocalGitRepo);
+        DynamicProjectGradleBuild build = dynamicProjectGradleBuildService.build(dynamicProject.getSourceDirectory());
 
         DynamicProjectClassLoader childClassLoader = new DynamicProjectClassLoader(
                 dynamicProject.getSourceDirectory(),

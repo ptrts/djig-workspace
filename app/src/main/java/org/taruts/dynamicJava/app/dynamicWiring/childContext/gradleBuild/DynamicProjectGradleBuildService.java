@@ -2,7 +2,6 @@ package org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild;
 
 import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.source.DynamicProjectLocalGitRepo;
 import org.taruts.gradleUtils.GradleBuilder;
 
 import java.io.File;
@@ -10,9 +9,7 @@ import java.io.File;
 @Component
 public class DynamicProjectGradleBuildService {
 
-    public DynamicProjectGradleBuild build(DynamicProjectLocalGitRepo localGitRepo) {
-
-        File projectSourceDirectory = localGitRepo.directory();
+    public DynamicProjectGradleBuild build(File projectSourceDirectory) {
 
         GradleBuilder.buildGradleProject(projectSourceDirectory);
 
@@ -26,6 +23,6 @@ public class DynamicProjectGradleBuildService {
             throw new IllegalStateException();
         }
 
-        return new DynamicProjectGradleBuild(localGitRepo, classesDirectory, resourcesDirectory);
+        return new DynamicProjectGradleBuild(classesDirectory, resourcesDirectory);
     }
 }
