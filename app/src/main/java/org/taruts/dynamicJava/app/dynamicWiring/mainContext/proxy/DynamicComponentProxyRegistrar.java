@@ -15,9 +15,12 @@ import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicProjectsApplicationProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicProjectsApplicationPropertiesMapper;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -41,9 +44,9 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
 
         registerFactory(registry);
 
-        DynamicProjectsProperties dynamicProjectsProperties = getDynamicProjectsProperties();
+        Map<String, DynamicProject> dynamicProjects = loadDynamicProjects();
 
-        dynamicProjectsProperties.forEach((projectName, projectProperties) -> {
+        dynamicProjects.forEach((projectName, projectProperties) -> {
             Set<Class<? extends DynamicComponent>> dynamicInterfaces = getDynamicInterfaces(projectProperties.getDynamicInterfacePackage());
             dynamicInterfaces.forEach(dynamicComponentInterface ->
                     registerProxy(registry, dynamicComponentInterface, projectName)
@@ -64,15 +67,20 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
     }
 
+    private Map<String, DynamicProject> loadDynamicProjects() {
+        DynamicProjectsApplicationProperties dynamicProjectsProperties = loadDynamicProjectsApplicationProperties();
+        return DynamicProjectsApplicationPropertiesMapper.map(dynamicProjectsProperties);
+    }
+
     /**
-     * This is how we get a populated type-safe properties object being in the {@link BeanDefinitionRegistryPostProcessor} phase.
-     * Autowiring does not work here.
-     * <a href="https://stackoverflow.com/a/65727823/2304456">stackoverflow link</a>
+     * This is how we get a populated type-safe properties object while being in the {@link BeanDefinitionRegistryPostProcessor} phase.
+     * We cannot just autowire it, because autowiring does not work in this phase.
+     * <a href="https://stackoverflow.com/a/65727823/2304456">a stackoverflow link</a>
      */
-    private DynamicProjectsProperties getDynamicProjectsProperties() {
-        BindResult<DynamicProjectsProperties> bindResult = Binder
+    private DynamicProjectsApplicationProperties loadDynamicProjectsApplicationProperties() {
+        BindResult<DynamicProjectsApplicationProperties> bindResult = Binder
                 .get(environment)
-                .bind(DynamicProjectsProperties.PREFIX, DynamicProjectsProperties.class);
+                .bind(DynamicProjectsApplicationProperties.PREFIX, DynamicProjectsApplicationProperties.class);
         return bindResult.get();
     }
 

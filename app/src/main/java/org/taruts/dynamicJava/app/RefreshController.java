@@ -7,9 +7,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectProperties;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsProperties;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.GradleProjectApplicationContextContainer;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsContainer;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.DynamicProjectContextManager;
 
 /**
  * Serves requests to refresh the dynamic code.
@@ -22,10 +22,10 @@ import org.taruts.dynamicJava.app.dynamicWiring.childContext.GradleProjectApplic
 public class RefreshController {
 
     @Autowired
-    private GradleProjectApplicationContextContainer gradleProjectApplicationContextContainer;
+    private DynamicProjectContextManager dynamicProjectContextManager;
 
     @Autowired
-    private DynamicProjectsProperties dynamicProjectsProperties;
+    private DynamicProjectsContainer dynamicProjectsContainer;
 
     @Autowired
     private TaskExecutor taskExecutor;
@@ -40,7 +40,7 @@ public class RefreshController {
     }
 
     private void refresh(String dynamicProjectName) {
-        DynamicProjectProperties dynamicProjectProperties = dynamicProjectsProperties.get(dynamicProjectName);
-        gradleProjectApplicationContextContainer.refresh(dynamicProjectName, dynamicProjectProperties);
+        DynamicProject dynamicProject = dynamicProjectsContainer.getProject(dynamicProjectName);
+        dynamicProjectContextManager.refresh(dynamicProject);
     }
 }

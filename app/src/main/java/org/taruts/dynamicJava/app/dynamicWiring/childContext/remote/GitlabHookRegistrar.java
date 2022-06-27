@@ -16,9 +16,9 @@ import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.taruts.dynamicJava.app.OurSmartLifecycle;
 import org.taruts.dynamicJava.app.RefreshController;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicImplProperties;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectProperties;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsContainer;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicImplProperties;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -51,7 +51,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
     private ReactiveWebServerApplicationContext reactiveWebServerApplicationContext;
 
     @Autowired
-    private DynamicProjectsProperties dynamicProjectsProperties;
+    private DynamicProjectsContainer dynamicProjectsContainer;
 
     @Override
     public int getOrder() {
@@ -59,27 +59,18 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
     }
 
     @Override
-    public void doStart() {
-        dynamicProjectsProperties.forEach(this::replaceHook);
+    public void doStop() {
+        dynamicProjectsContainer.forEachProject(this::deleteDynamicProjectHooks);
     }
 
     @Override
-    public void doStop() {
-        dynamicProjectsProperties.keySet().forEach(this::deleteDynamicProjectHooks);
+    public void doStart() {
+        dynamicProjectsContainer.forEachProject(this::replaceHook);
     }
 
-    private void deleteDynamicProjectHooks(String dynamicProjectName) {
-        URL hookUri = getHookUrl(dynamicProjectName);
-        if (hookUri == null) {
-            return;
-        }
-        withGitLabProject((gitLabApi, gitLabProject) ->
-                deleteHooksByUrl(gitLabApi, gitLabProject, hookUri)
-        );
-    }
+    private void replaceHook(DynamicProject dynamicProject) {
 
-    private void replaceHook(String dynamicProjectName, DynamicProjectProperties dynamicProjectProperties) {
-        URL hookUrl = getHookUrl(dynamicProjectName);
+        URL hookUrl = getHookUrl(dynamicProject);
         if (hookUrl == null) {
             return;
         }
@@ -90,7 +81,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
     }
 
     @SneakyThrows
-    private URL getHookUrl(String dynamicProjectName) {
+    private URL getHookUrl(DynamicProject dynamicProject) {
         DynamicImplProperties.GitRepository.Hook hookProperties = dynamicImplProperties.getGitRepository().getHook();
 
         String host = hookProperties.getHost();
@@ -108,10 +99,20 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
                 .host(host)
                 .port(ourServletContainerPort)
                 .replacePath("refresh")
-                .path(dynamicProjectName)
+                .path(dynamicProject.getName())
                 .build()
                 .toUri()
                 .toURL();
+    }
+
+    private void deleteDynamicProjectHooks(DynamicProject dynamicProject) {
+        URL hookUri = getHookUrl(dynamicProject);
+        if (hookUri == null) {
+            return;
+        }
+        withGitLabProject((gitLabApi, gitLabProject) ->
+                deleteHooksByUrl(gitLabApi, gitLabProject, hookUri)
+        );
     }
 
     @SneakyThrows

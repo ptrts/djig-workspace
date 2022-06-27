@@ -8,37 +8,28 @@ import org.springframework.beans.factory.annotation.BeanFactoryAnnotationUtils;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.event.ContextClosedEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.classLoader.DynamicProjectClassLoader;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.context.GradleProjectApplicationContext;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuild;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuildService;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.remote.DynamicProjectCloner;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.remote.DynamicProjectGitRemote;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.source.DynamicProjectLocalGitRepo;
 import org.taruts.dynamicJava.app.dynamicWiring.mainContext.proxy.DynamicComponentProxy;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 @Component
 @Slf4j
-public class GradleProjectApplicationContextContainer {
+public class DynamicProjectContextManager {
 
     @Autowired
     private ApplicationContext mainContext;
-
-    private final Map<String, GradleProjectApplicationContext> childContexts = Collections.synchronizedMap(new HashMap<>());
 
     @Autowired
     private DynamicProjectCloner dynamicProjectGitRemoteService;
@@ -47,60 +38,57 @@ public class GradleProjectApplicationContextContainer {
     private DynamicProjectGradleBuildService dynamicProjectGradleBuildService;
 
     @SneakyThrows
-    public void init(String projectName, DynamicProjectProperties dynamicProjectProperties) {
-        File localGitRepoDirectory = dynamicProjectProperties.getLocalGitRepoDirectory();
-        if (localGitRepoDirectory.exists()) {
-            FileUtils.forceDelete(localGitRepoDirectory);
+    public void init(DynamicProject dynamicProject) {
+        File sourceDirectory = dynamicProject.getSourceDirectory();
+        if (sourceDirectory.exists()) {
+            FileUtils.forceDelete(sourceDirectory);
         }
-        refresh(projectName, dynamicProjectProperties);
+        refresh(dynamicProject);
     }
 
-    public void refresh(String projectName, DynamicProjectProperties dynamicProjectProperties) {
-        GradleProjectApplicationContext newChildContext = createNewChildContext(projectName, dynamicProjectProperties);
-        setNewDelegatesInMainContext(projectName, newChildContext);
-        closeOldChildContextAndSetNewReference(projectName, newChildContext);
+    public void refresh(DynamicProject dynamicProject) {
+        GradleProjectApplicationContext newChildContext = createNewChildContext(dynamicProject);
+        setNewDelegatesInMainContext(dynamicProject, newChildContext);
+        closeOldChildContextAndSetNewReference(dynamicProject, newChildContext);
     }
 
-    private GradleProjectApplicationContext createNewChildContext(String projectName, DynamicProjectProperties dynamicProjectProperties) {
-
-        DynamicProjectGitRemote remote = new DynamicProjectGitRemote(
-                dynamicProjectProperties.getUrl(),
-                dynamicProjectProperties.getUsername(),
-                dynamicProjectProperties.getPassword()
-        );
-
-        File sourceDirectory = Path.of(projectName).toAbsolutePath().normalize().toFile();
+    private GradleProjectApplicationContext createNewChildContext(DynamicProject dynamicProject) {
 
         // Clone
-        DynamicProjectLocalGitRepo dynamicProjectLocalGitRepo = dynamicProjectGitRemoteService.cloneWithRetries(remote, sourceDirectory);
+        DynamicProjectLocalGitRepo dynamicProjectLocalGitRepo = dynamicProjectGitRemoteService.cloneWithRetries(
+                dynamicProject.getRemote(),
+                dynamicProject.getSourceDirectory()
+        );
 
         // Build
         DynamicProjectGradleBuild build = dynamicProjectGradleBuildService.build(dynamicProjectLocalGitRepo);
 
         DynamicProjectClassLoader childClassLoader = new DynamicProjectClassLoader(
-                sourceDirectory, build.classesDirectory(), build.resourcesDirectory());
-
-        GradleProjectApplicationContext newContext = new GradleProjectApplicationContext(
-                mainContext,
-                childClassLoader
+                dynamicProject.getSourceDirectory(),
+                build.classesDirectory(),
+                build.resourcesDirectory()
         );
+
+        GradleProjectApplicationContext newContext = new GradleProjectApplicationContext(mainContext, childClassLoader);
 
         newContext.refresh();
         return newContext;
     }
 
-    private void setNewDelegatesInMainContext(String projectName, GradleProjectApplicationContext newContext) {
+    private void setNewDelegatesInMainContext(DynamicProject dynamicProject, GradleProjectApplicationContext newContext) {
 
         ConfigurableListableBeanFactory beanFactory = ((ConfigurableApplicationContext) mainContext).getBeanFactory();
 
+        String thisProjectProxiesQualifier = dynamicProject.getName();
+
         @SuppressWarnings("rawtypes")
-        Map<String, DynamicComponentProxy> proxiesMap = BeanFactoryAnnotationUtils.qualifiedBeansOfType(
+        Map<String, DynamicComponentProxy> proxyBeansMap = BeanFactoryAnnotationUtils.qualifiedBeansOfType(
                 beanFactory,
                 DynamicComponentProxy.class,
-                projectName
+                thisProjectProxiesQualifier
         );
 
-        proxiesMap.forEach((proxyBeanName, proxy) -> {
+        proxyBeansMap.forEach((proxyBeanName, proxy) -> {
 
             Class<?>[] proxyInterfaces = proxy.getClass().getInterfaces();
 
@@ -132,31 +120,14 @@ public class GradleProjectApplicationContextContainer {
         });
     }
 
-    private void closeOldChildContextAndSetNewReference(String projectName, GradleProjectApplicationContext newChildContext) {
-
+    private void closeOldChildContextAndSetNewReference(DynamicProject project, GradleProjectApplicationContext newChildContext) {
         // Closing the old context
-        GradleProjectApplicationContext childContext = childContexts.get(projectName);
-        if (childContext != null) {
-            childContext.close();
+        GradleProjectApplicationContext oldChildContext = project.getContext();
+        if (oldChildContext != null) {
+            oldChildContext.close();
         }
 
-        // Saving the new context in the field
-        childContexts.put(projectName, newChildContext);
-    }
-
-    @EventListener(ContextClosedEvent.class)
-    public void close(ContextClosedEvent event) {
-
-        if (event.getApplicationContext() != mainContext) {
-            return;
-        }
-
-        List<String> keys = new ArrayList<>(childContexts.keySet());
-        keys.forEach(projectName ->
-                childContexts.computeIfPresent(projectName, (projectName2, childContext) -> {
-                    childContext.close();
-                    return null;
-                })
-        );
+        // Saving the new context
+        project.setContext(newChildContext);
     }
 }

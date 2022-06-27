@@ -6,10 +6,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicProjectsApplicationProperties;
 
 @SpringBootApplication(scanBasePackages = "org.taruts.dynamicJava.app")
-@EnableConfigurationProperties(DynamicProjectsProperties.class)
+@EnableConfigurationProperties(DynamicProjectsApplicationProperties.class)
 @EnableAsync
 @EnableRetry
 @Slf4j
