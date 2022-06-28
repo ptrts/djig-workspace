@@ -125,13 +125,21 @@ tasks.register("initDynamicDev", InitAdjacentGitRepoTask::class, "dynamic-dev").
     mustRunAfter(initLocalGitLab)
 }
 
+tasks.register("initCore", InitAdjacentGitRepoTask::class, "core").configure {
+    mustRunAfter(initLocalGitLab)
+}
+
+tasks.register("initCoreDynamicApi", InitAdjacentGitRepoTask::class, "core-dynamic-api").configure {
+    mustRunAfter(initLocalGitLab)
+}
+
 tasks.register("initProject") {
     group = "app"
 
     description = """
     Initializes everything for the project. 
-    This is an aggregator task for initLocalGitLab, initDynamicApi and initDynamicDev
+    This is an aggregator task for initLocalGitLab, initDynamicApi, initDynamicDev, initCore and initCoreDynamicApi
     """.trimIndent()
 
-    dependsOn(initLocalGitLab, "initDynamicApi", "initDynamicDev")
+    dependsOn(initLocalGitLab, "initDynamicApi", "initDynamicDev", "initCore", "initCoreDynamicApi")
 }
