@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties;
+package org.taruts.dynamicJava.app.dynamicWiring.childContext.configurationProperties;
 
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -3,7 +3,7 @@ package org.taruts.dynamicJava.app.dynamicWiring.childContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsContainer;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectRepository;
 
 import javax.annotation.PostConstruct;
 
@@ -18,10 +18,10 @@ public class DynamicProjectContextsInitializer {
     private DynamicProjectContextManager dynamicProjectContextManager;
 
     @Autowired
-    private DynamicProjectsContainer dynamicProjectsContainer;
+    private DynamicProjectRepository dynamicProjectRepository;
 
     @PostConstruct
     private void init() {
-        dynamicProjectsContainer.forEachProject(dynamicProjectContextManager::init);
+        dynamicProjectRepository.forEachProject(dynamicProjectContextManager::init);
     }
 }

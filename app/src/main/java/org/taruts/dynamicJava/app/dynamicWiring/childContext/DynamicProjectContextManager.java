@@ -8,8 +8,11 @@ import org.springframework.beans.factory.annotation.BeanFactoryAnnotationUtils;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectRepository;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.classLoader.DynamicProjectClassLoader;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.context.GradleProjectApplicationContext;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.gradleBuild.DynamicProjectGradleBuild;
@@ -35,6 +38,12 @@ public class DynamicProjectContextManager {
 
     @Autowired
     private DynamicProjectGradleBuildService dynamicProjectGradleBuildService;
+
+    @Autowired
+    private DynamicProjectRepository dynamicProjectRepository;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @SneakyThrows
     public void init(DynamicProject dynamicProject) {
@@ -128,5 +137,17 @@ public class DynamicProjectContextManager {
 
         // Saving the new context
         project.setContext(newChildContext);
+    }
+
+    @EventListener(ContextClosedEvent.class)
+    public void closeAllContexts(ContextClosedEvent event) {
+        if (event.getApplicationContext() != applicationContext) {
+            return;
+        }
+
+        dynamicProjectRepository.forEachProject(dynamicProject -> {
+            dynamicProject.getContext().close();
+            dynamicProject.setContext(null);
+        });
     }
 }

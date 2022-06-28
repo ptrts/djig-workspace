@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app;
+package org.taruts.dynamicJava.app.controller.refresh;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsContainer;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectRepository;
 import org.taruts.dynamicJava.app.dynamicWiring.childContext.DynamicProjectContextManager;
 
 /**
@@ -25,7 +25,7 @@ public class RefreshController {
     private DynamicProjectContextManager dynamicProjectContextManager;
 
     @Autowired
-    private DynamicProjectsContainer dynamicProjectsContainer;
+    private DynamicProjectRepository dynamicProjectRepository;
 
     @Autowired
     private TaskExecutor taskExecutor;
@@ -40,7 +40,7 @@ public class RefreshController {
     }
 
     private void refresh(String dynamicProjectName) {
-        DynamicProject dynamicProject = dynamicProjectsContainer.getProject(dynamicProjectName);
+        DynamicProject dynamicProject = dynamicProjectRepository.getProject(dynamicProjectName);
         dynamicProjectContextManager.refresh(dynamicProject);
     }
 }

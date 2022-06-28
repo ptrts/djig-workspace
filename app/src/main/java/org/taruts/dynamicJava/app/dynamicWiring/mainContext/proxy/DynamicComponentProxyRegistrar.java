@@ -16,8 +16,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicProjectsApplicationProperties;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicProjectsApplicationPropertiesMapper;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.configurationProperties.DynamicProjectConfigurationPropertiesMapper;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.configurationProperties.DynamicProjectsConfigurationProperties;
 import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
 
 import java.util.Map;
@@ -68,8 +68,8 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
     }
 
     private Map<String, DynamicProject> loadDynamicProjects() {
-        DynamicProjectsApplicationProperties dynamicProjectsProperties = loadDynamicProjectsApplicationProperties();
-        return DynamicProjectsApplicationPropertiesMapper.map(dynamicProjectsProperties);
+        DynamicProjectsConfigurationProperties dynamicProjectsProperties = loadDynamicProjectsApplicationProperties();
+        return DynamicProjectConfigurationPropertiesMapper.map(dynamicProjectsProperties);
     }
 
     /**
@@ -77,10 +77,10 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
      * We cannot just autowire it, because autowiring does not work in this phase.
      * <a href="https://stackoverflow.com/a/65727823/2304456">a stackoverflow link</a>
      */
-    private DynamicProjectsApplicationProperties loadDynamicProjectsApplicationProperties() {
-        BindResult<DynamicProjectsApplicationProperties> bindResult = Binder
+    private DynamicProjectsConfigurationProperties loadDynamicProjectsApplicationProperties() {
+        BindResult<DynamicProjectsConfigurationProperties> bindResult = Binder
                 .get(environment)
-                .bind(DynamicProjectsApplicationProperties.PREFIX, DynamicProjectsApplicationProperties.class);
+                .bind(DynamicProjectsConfigurationProperties.PREFIX, DynamicProjectsConfigurationProperties.class);
         return bindResult.get();
     }
 

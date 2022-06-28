@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.taruts.dynamicJava.app.OurSmartLifecycle;
-import org.taruts.dynamicJava.app.RefreshController;
+import org.taruts.dynamicJava.app.controller.refresh.RefreshController;
 import org.taruts.dynamicJava.app.dynamicWiring.DynamicProject;
-import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectsContainer;
-import org.taruts.dynamicJava.app.dynamicWiring.childContext.applicationProperties.DynamicImplProperties;
+import org.taruts.dynamicJava.app.dynamicWiring.DynamicProjectRepository;
+import org.taruts.dynamicJava.app.dynamicWiring.childContext.configurationProperties.DynamicImplProperties;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -51,7 +51,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
     private ReactiveWebServerApplicationContext reactiveWebServerApplicationContext;
 
     @Autowired
-    private DynamicProjectsContainer dynamicProjectsContainer;
+    private DynamicProjectRepository dynamicProjectRepository;
 
     @Override
     public int getOrder() {
@@ -60,12 +60,12 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
 
     @Override
     public void doStop() {
-        dynamicProjectsContainer.forEachProject(this::deleteDynamicProjectHooks);
+        dynamicProjectRepository.forEachProject(this::deleteDynamicProjectHooks);
     }
 
     @Override
     public void doStart() {
-        dynamicProjectsContainer.forEachProject(this::replaceHook);
+        dynamicProjectRepository.forEachProject(this::replaceHook);
     }
 
     private void replaceHook(DynamicProject dynamicProject) {

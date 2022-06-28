@@ -1,4 +1,4 @@
-package org.taruts.dynamicJava.app;
+package org.taruts.dynamicJava.app.controller.message;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +12,7 @@ import org.taruts.dynamicJava.dynamicApi.dynamic.MessageProvider;
 
 @RestController
 @Slf4j
-public class MainController {
+public class MessageController {
 
     @Autowired
     @Qualifier("dynamic-project-1")
