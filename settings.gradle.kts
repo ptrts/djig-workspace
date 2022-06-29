@@ -1,2 +1,2 @@
-rootProject.name = "dynamic-java-code-stored-in-git"
-include("app", "gitlab-container")
+rootProject.name = "workspace"
+include("example-app", "example-gitlab-container")
