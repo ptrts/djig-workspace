@@ -30,7 +30,7 @@ abstract class InitAdjacentGitRepoTask @Inject constructor(@Input val adjacentRe
     }
 
     init {
-        group = "app"
+        group = "workspace"
         description = "Clones the $adjacentRepoPostfix project into a project subdirectory with the same name"
     }
 

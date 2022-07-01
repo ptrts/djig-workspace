@@ -14,7 +14,7 @@ import java.nio.file.Path
 open class InitDynamicLocalTask : DefaultTask() {
 
     init {
-        group = "app"
+        group = "workspace"
 
         description = """
         Creates a fork of dynamic-dev in the dynamic-local project subdirectory 
