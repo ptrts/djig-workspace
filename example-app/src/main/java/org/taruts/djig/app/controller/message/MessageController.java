@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.taruts.djig.app.dynamicWiring.mainContext.proxy.DelegateNotSetException;
-import org.taruts.dynamicJava.dynamicApi.dynamic.MessageProvider;
+import org.taruts.djig.example.dynamicApi.dynamic.MessageProvider;
 
 @RestController
 @Slf4j
