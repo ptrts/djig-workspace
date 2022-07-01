@@ -17,8 +17,8 @@ buildscript {
         classpath("org.apache.commons:commons-lang3:3.12.0")
         classpath("commons-io:commons-io:2.11.0")
         classpath("com.google.guava:guava:31.1-jre")
-        classpath("we:process-utils:001")
-        classpath("we:git-utils:001")
+        classpath("org.taruts:process-utils:001")
+        classpath("org.taruts:git-utils:001")
         classpath("javax.inject:javax.inject:1")
         classpath("org.gitlab4j:gitlab4j-api:5.0.1")
     }
@@ -30,7 +30,7 @@ plugins {
     id("application")
 }
 
-group = "org.taruts.dynamic-java-code-stored-in-git"
+group = "org.taruts.djig.example"
 
 java.sourceCompatibility = JavaVersion.VERSION_17
 
@@ -69,14 +69,14 @@ dependencies {
     implementation("org.springframework.retry:spring-retry:1.2.5.RELEASE")
 
     // The API that the core of our application and the dynamic part use to communicate to each other
-    implementation("we.git-implementations:dynamic-api:001")
+    implementation("org.taruts.djig.example:dynamic-api:001")
 
     // GitLab API
     implementation("org.gitlab4j:gitlab4j-api:5.0.1")
 
     // Our util libraries
-    implementation("we:git-utils:001")
-    implementation("we:gradle-utils:001")
+    implementation("org.taruts:git-utils:001")
+    implementation("org.taruts:gradle-utils:001")
 
     // Utils
     implementation("org.apache.commons:commons-lang3")

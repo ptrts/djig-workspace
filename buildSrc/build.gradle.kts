@@ -15,9 +15,9 @@ repositories {
 dependencies {
 
     // Our libraries
-    implementation("we:git-utils:001")
-    implementation("we:gradle-utils:001")
-    implementation("we:process-utils:001")
+    implementation("org.taruts:git-utils:001")
+    implementation("org.taruts:gradle-utils:001")
+    implementation("org.taruts:process-utils:001")
 
     // Utils
     implementation("org.apache.commons:commons-lang3:3.12.0")
