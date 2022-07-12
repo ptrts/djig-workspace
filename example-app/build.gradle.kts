@@ -1,28 +1,7 @@
-import app.InitAdjacentGitRepoTask
-import app.InitDynamicLocalTask
-
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven {
-            name = "s3MavenRepo"
-            url = uri("s3://maven.taruts.net")
-            // AwsCredentials without a configuration closure means that there are credentials in a gradle.properties file.
-            // Our credentials are in the gradle.properties in the project itself.
-            credentials(AwsCredentials::class)
-        }
-    }
-    dependencies {
-        classpath("org.apache.commons:commons-lang3:3.12.0")
-        classpath("commons-io:commons-io:2.11.0")
-        classpath("com.google.guava:guava:31.1-jre")
-        classpath("org.taruts:process-utils:001")
-        classpath("org.taruts:git-utils:001")
-        classpath("javax.inject:javax.inject:1")
-        classpath("org.gitlab4j:gitlab4j-api:5.0.1")
-    }
-}
+import djig.DjigPlugin
+import gitlabContainer.GitLabContainerPlugin
+import gitlabContainer.GitLabContainerPluginExtension
+import java.net.URL
 
 plugins {
     id("org.springframework.boot") version "2.7.0"
@@ -101,45 +80,11 @@ tasks.named<Test>("test") {
     useJUnitPlatform()
 }
 
-val initDynamicLocal = tasks.registering(InitDynamicLocalTask::class) {
-    mustRunAfter(":gitlab-container:createAll")
+apply<GitLabContainerPlugin>()
+configure<GitLabContainerPluginExtension> {
+    url.set(URL("http://localhost:9580"))
+    username.set("user")
+    password.set("123456789")
 }
 
-val initLocalGitLab by tasks.registering {
-    group = "app"
-
-    description = """
-    An aggregator task that creates a local GitLab Docker container, 
-    creates a project in there which is a fork of dynamic-dev 
-    and clones it into the dynamic-local project subdirectory
-    """.trimIndent()
-
-    dependsOn(":gitlab-container:createAll", initDynamicLocal)
-}
-
-tasks.register("initDynamicApi", InitAdjacentGitRepoTask::class, "dynamic-api").configure {
-    mustRunAfter(initLocalGitLab)
-}
-
-tasks.register("initDynamicDev", InitAdjacentGitRepoTask::class, "dynamic-dev").configure {
-    mustRunAfter(initLocalGitLab)
-}
-
-tasks.register("initCore", InitAdjacentGitRepoTask::class, "core").configure {
-    mustRunAfter(initLocalGitLab)
-}
-
-tasks.register("initCoreDynamicApi", InitAdjacentGitRepoTask::class, "core-dynamic-api").configure {
-    mustRunAfter(initLocalGitLab)
-}
-
-tasks.register("initProject") {
-    group = "app"
-
-    description = """
-    Initializes everything for the project. 
-    This is an aggregator task for initLocalGitLab, initDynamicApi, initDynamicDev, initCore and initCoreDynamicApi
-    """.trimIndent()
-
-    dependsOn(initLocalGitLab, "initDynamicApi", "initDynamicDev", "initCore", "initCoreDynamicApi")
-}
+apply<DjigPlugin>()

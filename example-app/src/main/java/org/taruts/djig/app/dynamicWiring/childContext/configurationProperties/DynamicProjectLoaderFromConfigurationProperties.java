@@ -11,14 +11,14 @@ import javax.annotation.PostConstruct;
 public class DynamicProjectLoaderFromConfigurationProperties {
 
     @Autowired
-    private DynamicProjectsConfigurationProperties dynamicProjectsConfigurationProperties;
+    private DjigConfigurationProperties djigConfigurationProperties;
 
     @Autowired
     private DynamicProjectManager dynamicProjectManager;
 
     @PostConstruct
     private void createAndLoadDynamicProjects() {
-        this.dynamicProjectsConfigurationProperties.forEach((dynamicProjectName, dynamicProjectConfigurationProperties) -> {
+        djigConfigurationProperties.getDynamicProjects().forEach((dynamicProjectName, dynamicProjectConfigurationProperties) -> {
             DynamicProject dynamicProject = DynamicProjectConfigurationPropertiesMapper.map(dynamicProjectName, dynamicProjectConfigurationProperties);
             dynamicProjectManager.addProject(dynamicProject);
         });

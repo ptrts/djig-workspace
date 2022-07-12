@@ -1,6 +1,5 @@
 package gitlabContainer
 
-import gitlabContainer.utils.GitLabParameters
 import gitlabContainer.utils.GitLabContainerMountPoints
 import io.netty.channel.unix.Errors
 import org.apache.commons.io.FileUtils
@@ -15,6 +14,7 @@ import reactor.netty.http.client.HttpClientResponse
 import reactor.netty.http.client.PrematureCloseException
 import java.io.File
 import java.net.ConnectException
+import java.net.URL
 import java.time.Duration
 
 open class CreateContainerTask : DefaultTask() {
@@ -29,9 +29,15 @@ open class CreateContainerTask : DefaultTask() {
     @TaskAction
     fun action() {
         createVolumeDirectoriesOnHost()
-        val gitLabParameters = GitLabParameters.fromAppProjectResource(project, "application-dynamic-local.properties")
-        createContainer(gitLabParameters)
-        waitUntilContainerIsReady(gitLabParameters)
+
+        val gitLabContainerPluginExtension = project.extensions.findByType(
+            GitLabContainerPluginExtension::class.java
+        )!!
+
+        val url: URL = gitLabContainerPluginExtension.url.get()
+
+        createContainer(url)
+        waitUntilContainerIsReady(url)
     }
 
     private fun createVolumeDirectoriesOnHost() {
@@ -45,7 +51,7 @@ open class CreateContainerTask : DefaultTask() {
         FileUtils.getFile(home, "data").mkdirs()
     }
 
-    private fun createContainer(gitLabParameters: GitLabParameters) {
+    private fun createContainer(url: URL) {
         val command: MutableList<String> = mutableListOf()
 
         command.addAll(
@@ -54,7 +60,7 @@ open class CreateContainerTask : DefaultTask() {
                 "--detach",
                 "--hostname", "gitlab.domain.name.placeholder",
                 "--publish", "9522:22",
-                "--publish", "${gitLabParameters.gitlabUri.port}:80",
+                "--publish", "${url.port}:80",
                 "--publish", "9543:443",
                 "--name", "gitlab.taruts.org",
                 "--restart", "always",
@@ -77,11 +83,11 @@ open class CreateContainerTask : DefaultTask() {
         ProcessRunner.runProcess(project.projectDir, command)
     }
 
-    private fun waitUntilContainerIsReady(gitLabParameters: GitLabParameters) {
+    private fun waitUntilContainerIsReady(url: URL) {
         val httpClient: HttpClient = HttpClient
             .create()
             .compress(true)
-            .baseUrl(gitLabParameters.gitlabUri.toString())
+            .baseUrl(url.toString())
 
         val loggingManagerInternal: LoggingManagerInternal = logging as LoggingManagerInternal
 

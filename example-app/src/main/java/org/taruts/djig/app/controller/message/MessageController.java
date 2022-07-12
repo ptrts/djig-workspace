@@ -2,11 +2,11 @@ package org.taruts.djig.app.controller.message;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.taruts.djig.app.dynamicWiring.DynamicProjectQualifier;
 import org.taruts.djig.app.dynamicWiring.mainContext.proxy.DelegateNotSetException;
 import org.taruts.djig.example.dynamicApi.dynamic.MessageProvider;
 
@@ -15,7 +15,7 @@ import org.taruts.djig.example.dynamicApi.dynamic.MessageProvider;
 public class MessageController {
 
     @Autowired
-    @Qualifier("dynamic-project-1")
+    @DynamicProjectQualifier("1")
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     private MessageProvider messageProvider;
 

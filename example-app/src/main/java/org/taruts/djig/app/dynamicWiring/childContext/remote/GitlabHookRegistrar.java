@@ -18,7 +18,7 @@ import org.taruts.djig.app.OurSmartLifecycle;
 import org.taruts.djig.app.controller.refresh.RefreshController;
 import org.taruts.djig.app.dynamicWiring.DynamicProject;
 import org.taruts.djig.app.dynamicWiring.DynamicProjectRepository;
-import org.taruts.djig.app.dynamicWiring.childContext.configurationProperties.DynamicImplProperties;
+import org.taruts.djig.app.dynamicWiring.childContext.configurationProperties.DjigConfigurationProperties;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -45,7 +45,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
             .thenComparing(URL::getPath);
 
     @Autowired
-    private DynamicImplProperties dynamicImplProperties;
+    private DjigConfigurationProperties djigConfigurationProperties;
 
     @Autowired
     private ReactiveWebServerApplicationContext reactiveWebServerApplicationContext;
@@ -74,7 +74,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
         if (hookUrl == null) {
             return;
         }
-        withGitLabProject((gitLabApi, gitLabProject) -> {
+        withGitLabProject(dynamicProject, (gitLabApi, gitLabProject) -> {
             deleteHooksByUrl(gitLabApi, gitLabProject, hookUrl);
             addHook(gitLabApi, gitLabProject, hookUrl);
         });
@@ -82,7 +82,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
 
     @SneakyThrows
     private URL getHookUrl(DynamicProject dynamicProject) {
-        DynamicImplProperties.GitRepository.Hook hookProperties = dynamicImplProperties.getGitRepository().getHook();
+        DjigConfigurationProperties.Hook hookProperties = djigConfigurationProperties.getHook();
 
         String host = hookProperties.getHost();
         if (StringUtils.isBlank(host)) {
@@ -105,22 +105,12 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
                 .toURL();
     }
 
-    private void deleteDynamicProjectHooks(DynamicProject dynamicProject) {
-        URL hookUri = getHookUrl(dynamicProject);
-        if (hookUri == null) {
-            return;
-        }
-        withGitLabProject((gitLabApi, gitLabProject) ->
-                deleteHooksByUrl(gitLabApi, gitLabProject, hookUri)
-        );
-    }
-
     @SneakyThrows
-    private void withGitLabProject(BiConsumer<GitLabApi, Project> useProject) {
-        DynamicImplProperties.GitRepository gitRepositoryProperties = dynamicImplProperties.getGitRepository();
-        String repositoryUrlStr = gitRepositoryProperties.getUrl();
-        String username = gitRepositoryProperties.getUsername();
-        String password = gitRepositoryProperties.getPassword();
+    private void withGitLabProject(DynamicProject dynamicProject, BiConsumer<GitLabApi, Project> useProject) {
+        DynamicProjectGitRemote remoteProperties = dynamicProject.getRemote();
+        String repositoryUrlStr = remoteProperties.url();
+        String username = remoteProperties.username();
+        String password = remoteProperties.password();
 
         URI repositoryUri = URI.create(repositoryUrlStr);
 
@@ -150,33 +140,8 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
         }
     }
 
-    private void deleteHooksByUrl(GitLabApi gitLabApi, Project project, URL hookUrl) {
-        List<ProjectHook> hooksToDelete = findHooksToDeleteByUrl(gitLabApi, project, hookUrl);
-        hooksToDelete.forEach(hookToDelete -> {
-            try {
-                gitLabApi.getProjectApi().deleteHook(hookToDelete);
-            } catch (GitLabApiException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    @SneakyThrows
-    private List<ProjectHook> findHooksToDeleteByUrl(GitLabApi gitLabApi, Project project, URL hookUrl) {
-        List<ProjectHook> allProjectHooks = gitLabApi.getProjectApi().getHooks(project.getId());
-        return allProjectHooks.stream().filter(currentHook -> {
-            try {
-                URL currentHookUrl = new URL(currentHook.getUrl());
-                return URL_COMPARATOR.compare(currentHookUrl, hookUrl) == 0;
-            } catch (MalformedURLException e) {
-                // All bad URLs must be deleted
-                return true;
-            }
-        }).toList();
-    }
-
     private void addHook(GitLabApi gitLabApi, Project gitLabProject, URL hookUrl) {
-        DynamicImplProperties.GitRepository.Hook hookProperties = dynamicImplProperties.getGitRepository().getHook();
+        DjigConfigurationProperties.Hook hookProperties = djigConfigurationProperties.getHook();
 
         boolean enableSslVerification = hookProperties.isSslVerification();
         String secretToken = hookProperties.getSecretToken();
@@ -206,5 +171,41 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
         } catch (GitLabApiException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void deleteHooksByUrl(GitLabApi gitLabApi, Project project, URL hookUrl) {
+        List<ProjectHook> hooksToDelete = findHooksToDeleteByUrl(gitLabApi, project, hookUrl);
+        hooksToDelete.forEach(hookToDelete -> {
+            try {
+                gitLabApi.getProjectApi().deleteHook(hookToDelete);
+            } catch (GitLabApiException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @SneakyThrows
+    private List<ProjectHook> findHooksToDeleteByUrl(GitLabApi gitLabApi, Project project, URL hookUrl) {
+        List<ProjectHook> allProjectHooks = gitLabApi.getProjectApi().getHooks(project.getId());
+        return allProjectHooks.stream().filter(currentHook -> {
+            try {
+                URL currentHookUrl = new URL(currentHook.getUrl());
+                return URL_COMPARATOR.compare(currentHookUrl, hookUrl) == 0;
+            } catch (MalformedURLException e) {
+                // All bad URLs must be deleted
+                return true;
+            }
+        }).toList();
+    }
+
+    private void deleteDynamicProjectHooks(DynamicProject dynamicProject) {
+        URL hookUri = getHookUrl(dynamicProject);
+        if (hookUri == null) {
+            return;
+        }
+        withGitLabProject(
+                dynamicProject,
+                (gitLabApi, gitLabProject) -> deleteHooksByUrl(gitLabApi, gitLabProject, hookUri)
+        );
     }
 }

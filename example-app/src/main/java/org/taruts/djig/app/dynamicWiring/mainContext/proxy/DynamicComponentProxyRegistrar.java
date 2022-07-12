@@ -2,7 +2,6 @@ package org.taruts.djig.app.dynamicWiring.mainContext.proxy;
 
 import org.reflections.Reflections;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.AutowireCandidateQualifier;
@@ -16,9 +15,10 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.taruts.djig.app.dynamicWiring.DynamicProject;
+import org.taruts.djig.app.dynamicWiring.DynamicProjectQualifier;
+import org.taruts.djig.app.dynamicWiring.childContext.configurationProperties.DjigConfigurationProperties;
 import org.taruts.djig.app.dynamicWiring.childContext.configurationProperties.DynamicProjectConfigurationPropertiesMapper;
-import org.taruts.djig.app.dynamicWiring.childContext.configurationProperties.DynamicProjectsConfigurationProperties;
-import org.taruts.dynamicJava.dynamicApi.dynamic.DynamicComponent;
+import org.taruts.djig.dynamicApi.DynamicComponent;
 
 import java.util.Map;
 import java.util.Set;
@@ -68,8 +68,8 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
     }
 
     private Map<String, DynamicProject> loadDynamicProjects() {
-        DynamicProjectsConfigurationProperties dynamicProjectsProperties = loadDynamicProjectsApplicationProperties();
-        return DynamicProjectConfigurationPropertiesMapper.map(dynamicProjectsProperties);
+        DjigConfigurationProperties djigConfigurationProperties = loadDjigApplicationProperties();
+        return DynamicProjectConfigurationPropertiesMapper.map(djigConfigurationProperties.getDynamicProjects());
     }
 
     /**
@@ -77,10 +77,10 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
      * We cannot just autowire it, because autowiring does not work in this phase.
      * <a href="https://stackoverflow.com/a/65727823/2304456">a stackoverflow link</a>
      */
-    private DynamicProjectsConfigurationProperties loadDynamicProjectsApplicationProperties() {
-        BindResult<DynamicProjectsConfigurationProperties> bindResult = Binder
+    private DjigConfigurationProperties loadDjigApplicationProperties() {
+        BindResult<DjigConfigurationProperties> bindResult = Binder
                 .get(environment)
-                .bind(DynamicProjectsConfigurationProperties.PREFIX, DynamicProjectsConfigurationProperties.class);
+                .bind(DjigConfigurationProperties.PREFIX, DjigConfigurationProperties.class);
         return bindResult.get();
     }
 
@@ -101,7 +101,7 @@ public class DynamicComponentProxyRegistrar implements BeanDefinitionRegistryPos
                 .addConstructorArgValue(dynamicInterface)
                 .getBeanDefinition();
 
-        beanDefinition.addQualifier(new AutowireCandidateQualifier(Qualifier.class, projectName));
+        beanDefinition.addQualifier(new AutowireCandidateQualifier(DynamicProjectQualifier.class, projectName));
 
         registry.registerBeanDefinition(beanName, beanDefinition);
     }

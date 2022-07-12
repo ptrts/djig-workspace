@@ -1,53 +1,128 @@
 package app
 
-import gitlabContainer.utils.GitLabParameters
+import gitlabContainer.utils.DynamicProjectProperties
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group
+import org.gitlab4j.api.models.Namespace
 import org.gitlab4j.api.models.Project
 import org.taruts.gitUtils.GitRemoteUrlParser
+import java.net.URI
+import java.net.URL
 
 object LocalGitLabProjectCreator {
 
-    fun recreateGroupAndProject(localGitLabParameters: GitLabParameters) {
-        val gitLabApi: GitLabApi = getGitLabApi(localGitLabParameters)
-        val projectUriParceResult = GitRemoteUrlParser.parse(localGitLabParameters.projectUri)
-        val group: Group = getOrCreateGroup(gitLabApi, projectUriParceResult.namespace)
-        recreateProject(gitLabApi, group, projectUriParceResult.projectName)
+    fun recreateGroupAndProject(
+        dynamicProjectProperties: DynamicProjectProperties,
+        targetGitLabUrl: URL,
+        targetGitLabUsername: String,
+        targetGitLabPassword: String
+    ) {
+
+        val sourceGitLabApi: GitLabApi = getGitLabApi(
+            dynamicProjectProperties.gitlabUri,
+            dynamicProjectProperties.username,
+            dynamicProjectProperties.password
+        )
+
+        val sourceGitLabProject: Project = sourceGitLabApi.projectApi.getProject(dynamicProjectProperties.gitlabUri.path)
+
+        // todo Проверить выкачивание приватных проектов и их закачивание в локальный GitLab
+        //      Может быть стоит все выкачиваемое делать публичным, даже если в оригинале оно приватное
+
+        val targetGitLabApi: GitLabApi = getGitLabApi(
+            targetGitLabUrl.toURI(),
+            targetGitLabUsername,
+            targetGitLabPassword
+        )
+
+        val deepestTargetGroup = copyProjectGroups(sourceGitLabApi, sourceGitLabProject, targetGitLabApi)
+
+        recreateProject(targetGitLabApi, deepestTargetGroup, sourceGitLabProject.name)
     }
 
-    private fun getGitLabApi(gitLabParameters: GitLabParameters) = GitLabApi.oauth2Login(
-        gitLabParameters.gitlabUri.toString(),
-        gitLabParameters.username,
-        gitLabParameters.password,
-        true
-    )
+    private fun copyProjectGroups(sourceGitLabApi: GitLabApi, sourceGitLabProject: Project, targetGitLabApi: GitLabApi): Group? {
+        var sourceGroups: List<Group> = getProjectGroups(sourceGitLabApi, sourceGitLabProject)
 
-    private fun getOrCreateGroup(gitLabApi: GitLabApi, groupPath: String): Group {
-        return gitLabApi.groupApi.getOptionalGroup(groupPath).orElseGet {
-            gitLabApi.groupApi.addGroup(groupPath, groupPath)
+        var previousTargetGroup: Group? = null
+
+        for (sourceGroup in sourceGroups) {
+            previousTargetGroup = copyGroup(sourceGroup, targetGitLabApi, previousTargetGroup)
+        }
+
+        return previousTargetGroup
+    }
+
+    private fun getProjectGroups(gitLabApi: GitLabApi, project: Project): List<Group> {
+        val groups: MutableList<Group> = ArrayList<Group>()
+
+        val namespace: Namespace? = project.namespace
+        if (namespace != null && "group".equals(namespace.kind)) {
+            var group: Group? = gitLabApi.groupApi.getGroup(namespace.id)
+            while (group != null) {
+                groups.add(group)
+                group = group.parentId?.let(gitLabApi.groupApi::getGroup)
+            }
+        }
+
+        return groups.asReversed()
+    }
+
+    private fun copyGroup(
+        sourceGroup: Group,
+        targetGitLabApi: GitLabApi,
+        targetParentGroup: Group?
+    ): Group? {
+        var targetGroup = Group()
+            .withName(sourceGroup.name)
+            .withPath(sourceGroup.path)
+            .withDescription(sourceGroup.description)
+            .withVisibility(sourceGroup.visibility)
+            .withlfsEnabled(sourceGroup.lfsEnabled)
+            .withRequestAccessEnabled(sourceGroup.requestAccessEnabled)
+            .withParentId(targetParentGroup?.parentId)
+
+        val pathPrefix =
+            if (targetParentGroup == null)
+                ""
+            else
+                (targetParentGroup.fullPath + "/")
+
+        val targetGroupFullPath = pathPrefix + targetGroup.path
+
+        return targetGitLabApi.groupApi.getOptionalGroup(targetGroupFullPath).orElseGet {
+            targetGitLabApi.groupApi.addGroup(targetGroup)
         }
     }
 
-    private fun recreateProject(gitLabApi: GitLabApi, group: Group, projectName: String): Project {
+    private fun getGitLabApi(uri: URI, username: String, password: String?): GitLabApi {
+        val urlStr = uri.toString()
+        if (password == null) {
+            return GitLabApi(urlStr, username)
+        } else {
+            return GitLabApi.oauth2Login(urlStr, username, password, true)
+        }
+    }
+
+    private fun recreateProject(gitLabApi: GitLabApi, group: Group?, projectName: String): Project {
         deleteProjectIfExistsAndWaitForDisappearance(gitLabApi, group, projectName)
         return createProject(gitLabApi, group, projectName)
     }
 
-    private fun deleteProjectIfExistsAndWaitForDisappearance(gitLabApi: GitLabApi, group: Group, projectName: String) {
+    private fun deleteProjectIfExistsAndWaitForDisappearance(gitLabApi: GitLabApi, group: Group?, projectName: String) {
         gitLabApi.projectApi
-            .getOptionalProject(group.path, projectName)
+            .getOptionalProject(group?.path, projectName)
             .ifPresent { project ->
                 gitLabApi.projectApi.deleteProject(project.id)
                 waitForProjectDisappearance(gitLabApi, group, project)
             }
     }
 
-    private fun waitForProjectDisappearance(gitLabApi: GitLabApi, group: Group, project: Project) {
+    private fun waitForProjectDisappearance(gitLabApi: GitLabApi, group: Group?, project: Project) {
         println("Waiting until the existing project is deleted...")
         var i = 60
         while (i > 0) {
-            if (gitLabApi.projectApi.getOptionalProject(group.path, project.name).isPresent) {
+            if (gitLabApi.projectApi.getOptionalProject(group?.path, project.name).isPresent) {
                 break
             }
             println("$i...")
@@ -59,12 +134,12 @@ object LocalGitLabProjectCreator {
         }
     }
 
-    private fun createProject(gitLabApi: GitLabApi, group: Group, projectName: String): Project {
+    private fun createProject(gitLabApi: GitLabApi, group: Group?, projectName: String): Project {
         // There are attempts because after disappearing from the API a project may still exist for some time in GitLab underwhater,
         // making attempts to create another project with the same name and in the same namespace fail
         for (i in 100 downTo 1) {
             try {
-                return gitLabApi.projectApi.createProject(group.id, projectName)
+                return gitLabApi.projectApi.createProject(group?.id, projectName)
             } catch (e: GitLabApiException) {
                 // Most probably, a project with the same name and in the same namespace is still in the process of deletion
                 if (i > 1) {

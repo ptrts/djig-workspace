@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class DynamicProjectConfigurationPropertiesMapper {
 
-    public static Map<String, DynamicProject> map(DynamicProjectsConfigurationProperties dynamicProjectsConfigurationProperties) {
+    public static Map<String, DynamicProject> map(Map<String, DynamicProjectConfigurationProperties> dynamicProjectsConfigurationProperties) {
         return dynamicProjectsConfigurationProperties
                 .entrySet()
                 .stream()

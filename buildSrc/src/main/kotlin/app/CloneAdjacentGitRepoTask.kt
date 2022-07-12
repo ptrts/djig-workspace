@@ -20,13 +20,14 @@ import javax.inject.Inject
  *
  * @param adjacentRepoPostfix   Git repo URL postfix of the cloned project
  */
-abstract class InitAdjacentGitRepoTask @Inject constructor(@Input val adjacentRepoPostfix: String) : DefaultTask() {
+abstract class CloneAdjacentGitRepoTask @Inject constructor(@Input val adjacentRepoPostfix: String) : DefaultTask() {
 
     companion object {
         /**
          * Everything that goes before this and the ".git" afterwards is the same for this main projects and the supporting ones
          */
-        private const val MAIN_PROJECT_REPO_POSTFIX: String = "main"
+        // todo Сие нужно чтобы как-то можно было указать в параметрах. Не всегда воркспейсовый проект у нас будет называться workspace
+        private const val MAIN_PROJECT_REPO_POSTFIX: String = "workspace"
     }
 
     init {

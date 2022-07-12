@@ -1,10 +1,9 @@
 <component name="ProjectRunConfigurationManager">
-    <configuration default="false" name="Main (dynamic-dev)" type="SpringBootApplicationConfigurationType"
-                   factoryName="Spring Boot">
+    <configuration default="false" name="Main (dynamic-dev)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
         <option name="ACTIVE_PROFILES" value="dev, dynamic-dev"/>
-        <module name="dynamic-java-code-stored-in-git.app.main"/>
-        <option name="SPRING_BOOT_MAIN_CLASS" value="app.main.Main"/>
-        <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$/working-directory"/>
+        <module name="workspace.example-app.main"/>
+        <option name="SPRING_BOOT_MAIN_CLASS" value="org.taruts.djig.app.Main"/>
+        <option name="WORKING_DIRECTORY" value="file://$ProjectFileDir$/example-working-directory"/>
         <method v="2">
             <option name="Make" enabled="true"/>
         </method>

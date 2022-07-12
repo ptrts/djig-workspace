@@ -7,7 +7,10 @@
 .gradle
 build
 
-working-directory
+example-working-directory
+example-dynamic-api
+example-dynamic-dev
+example-dynamic-local
+
+core
 dynamic-api
-dynamic-dev
-dynamic-local
