@@ -13,11 +13,14 @@ open class DjigPluginExtension @Inject constructor(private val objectFactory: Ob
 
     val localGitLabsCreation: LocalGitLabsCreation = objectFactory.newInstance(LocalGitLabsCreation::class.java)
 
-    fun localGitLabsCreation(configure: Action<LocalGitLabsCreation>) {
+    fun localGitLabsCreation(appProjectDirectoryRelativePath: String, sourceSpringBootProfile: String, configure: Action<LocalGitLabsCreation>) {
+        localGitLabsCreation.appProjectDirectoryRelativePath.set(appProjectDirectoryRelativePath)
+        localGitLabsCreation.sourceSpringBootProfile.set(sourceSpringBootProfile)
         configure.execute(localGitLabsCreation)
     }
 
     interface LocalGitLabsCreation {
+        val appProjectDirectoryRelativePath: Property<String>
         val sourceSpringBootProfile: Property<String>
         val targetGitLabs: LocalGitLabs
     }

@@ -52,10 +52,14 @@ class DynamicProjectProperties(
 
         fun loadDynamicProjectsMapFromAppProjectResource(
             project: Project,
+            appProjectDirectoryRelativePath: String,
             propertiesResourcePath: String
         ): Map<String, DynamicProjectProperties> {
-            val appProject = project.project(":example-app")
-            val properties: Properties = loadPropertiesFromProjectResource(appProject, propertiesResourcePath)
+            val propertiesFile: File = FileUtils.getFile(
+                project.projectDir,
+                "${appProjectDirectoryRelativePath}/src/main/resources/${propertiesResourcePath}"
+            )
+            val properties: Properties = loadPropertiesFromFile(propertiesFile)
             val dynamicProjectsRawMap = loadDynamicProjectsMapRaw(properties)
             return getDynamicProjectsMapFromRawMap(dynamicProjectsRawMap)
         }
@@ -97,32 +101,12 @@ class DynamicProjectProperties(
             return create(projectUrl, username, password)
         }
 
-        private fun loadPropertiesFromProjectResource(project: Project, propertiesResourcePath: String): Properties {
-            val resourcesDir = getResourcesDirectory(project)
-
-            val localGitlabPropertiesFile = FileUtils.getFile(resourcesDir, propertiesResourcePath)
-
+        private fun loadPropertiesFromFile(file: File): Properties {
             val localGitlabProperties = Properties()
-            FileReader(localGitlabPropertiesFile).use { reader ->
+            FileReader(file).use { reader ->
                 localGitlabProperties.load(reader)
             }
             return localGitlabProperties
-        }
-
-        private fun getResourcesDirectory(project: Project): File? {
-            val javaPluginExtension = project.extensions.findByType(
-                JavaPluginExtension::class.java
-            )!!
-
-            val resourcesDir = javaPluginExtension
-                .sourceSets
-                .getByName("main")
-                .resources
-                .srcDirs
-                .stream()
-                .findFirst()
-                .orElseThrow()
-            return resourcesDir
         }
     }
 }

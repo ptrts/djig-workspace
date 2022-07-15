@@ -1,9 +1,3 @@
-import djig.DjigPlugin
-import djig.DjigPluginExtension
-import gitlabContainer.GitLabContainerPlugin
-import gitlabContainer.GitLabContainerPluginExtension
-import java.net.URL
-
 plugins {
     id("org.springframework.boot") version "2.7.0"
     id("io.spring.dependency-management") version "1.0.11.RELEASE"
@@ -79,19 +73,4 @@ dependencies {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
-}
-
-apply<GitLabContainerPlugin>()
-configure<GitLabContainerPluginExtension> {
-    url.set(URL("http://localhost:9580"))
-    username.set("user")
-    password.set("123456789")
-}
-
-apply<DjigPlugin>()
-configure<DjigPluginExtension> {
-    localGitLabsCreation {
-        sourceSpringBootProfile.set("dynamic-dev")
-        targetGitLabs.fromGitLabContainer("dynamic-local", "dynamic-local-")
-    }
 }

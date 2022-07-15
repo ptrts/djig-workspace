@@ -1,4 +1,22 @@
+import djig.DjigPlugin
+import djig.DjigPluginExtension
+import gitlabContainer.GitLabContainerPlugin
+import gitlabContainer.GitLabContainerPluginExtension
 import workspace.CloneAdjacentGitRepoTask
+
+apply<GitLabContainerPlugin>()
+configure<GitLabContainerPluginExtension> {
+    url.set(java.net.URL("http://localhost:9580"))
+    username.set("user")
+    password.set("123456789")
+}
+
+apply<DjigPlugin>()
+configure<DjigPluginExtension> {
+    localGitLabsCreation("example-app", "dynamic-dev") {
+        targetGitLabs.fromGitLabContainer("dynamic-local", "dynamic-local-")
+    }
+}
 
 // todo cloneExampleApp, когда example-app переедет из репозитория workspace в свой отдельный репозиторий
 

@@ -15,6 +15,7 @@ import javax.inject.Inject
 open class InitLocalDynamicProjectsTask
 @Inject
 constructor(
+    @Input val appProjectDirectoryRelativePath: String,
     @Input val sourceSpringBootProfile: String,
     @Input val targetGitLab: DjigPluginExtension.LocalGitLab
 ) : DefaultTask() {
@@ -34,7 +35,7 @@ constructor(
         // Get the remote URLs from the profile property file of the project.
         // The project knows the URLs because it's where it gets dynamic Java code when working in springBootProfile
         val sourceDynamicProjectsMap = DynamicProjectProperties.loadDynamicProjectsMapFromAppProjectResource(
-            project, "application-${sourceSpringBootProfile}.properties"
+            project, appProjectDirectoryRelativePath, "application-${sourceSpringBootProfile}.properties"
         )
 
         sourceDynamicProjectsMap.forEach { projectName, dynamicProjectProperties ->

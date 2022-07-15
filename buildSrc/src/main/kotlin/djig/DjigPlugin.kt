@@ -15,6 +15,7 @@ class DjigPlugin : Plugin<Project> {
         }
 
         val sourceSpringBootProfile = extension.localGitLabsCreation.sourceSpringBootProfile.get()
+        val appProjectDirectoryRelativePath = extension.localGitLabsCreation.appProjectDirectoryRelativePath.get()
 
         val taskNames: List<String> = extension.localGitLabsCreation.targetGitLabs.map { targetGitLab ->
             val targetGitLabName: String = targetGitLab.name.get()
@@ -24,6 +25,7 @@ class DjigPlugin : Plugin<Project> {
             val taskProvider: TaskProvider<InitLocalDynamicProjectsTask> = project.tasks.register(
                 taskName,
                 InitLocalDynamicProjectsTask::class.java,
+                appProjectDirectoryRelativePath,
                 sourceSpringBootProfile,
                 targetGitLab
             )
