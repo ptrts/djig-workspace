@@ -36,18 +36,7 @@ tasks.register("cloneDynamicApi", CloneAdjacentGitRepoTask::class, "dynamic-api"
     group = "workspace"
 }
 
-tasks.register("cloneEverything") {
+tasks.register("cloneAll") {
     group = "workspace"
     dependsOn("cloneExampleDynamicApi", "cloneExampleDynamicDev", "cloneCore", "cloneDynamicApi")
-}
-
-tasks.register("initProject") {
-    group = "app"
-
-    description = """
-    Initializes everything for the project. 
-    This is an aggregator task for initExampleLocalGitLab and cloneEverything.
-    """.trimIndent()
-
-    dependsOn("gitLabContainerCreateAllWithProjects", "cloneEverything")
 }

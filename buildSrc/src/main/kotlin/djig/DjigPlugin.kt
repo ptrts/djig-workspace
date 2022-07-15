@@ -10,8 +10,8 @@ class DjigPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         val extension: DjigPluginExtension = project.extensions.create<DjigPluginExtension>("djig", DjigPluginExtension::class.java)
 
-        val gitLabContainerTaskName = object {
-            var value: String? = null
+        val hasContainerGitLabTask = object {
+            var value: Boolean = false
         }
 
         val sourceSpringBootProfile = extension.localGitLabsCreation.sourceSpringBootProfile.get()
@@ -31,7 +31,7 @@ class DjigPlugin : Plugin<Project> {
             )
 
             if (targetGitLab.isGitLabContainer) {
-                gitLabContainerTaskName.value = taskName
+                hasContainerGitLabTask.value = true
                 taskProvider.configure {
                     it.mustRunAfter("gitLabContainerCreateAll")
                 }
@@ -49,10 +49,33 @@ class DjigPlugin : Plugin<Project> {
             it.dependsOn(*taskNames.toTypedArray())
         }
 
-        if (gitLabContainerTaskName.value != null) {
-            project.tasks.register("gitLabContainerCreateAllWithProjects") {
-                it.group = "gitlab-container"
-                it.dependsOn("gitLabContainerCreateAll", gitLabContainerTaskName.value)
+        project.tasks.register("initAll") {
+            it.group = "djig"
+            it.description = """
+            An aggregator tasks initializing everything for the workspace.
+            """.trimIndent()
+            it.dependsOn("initLocalDynamicProjects", "cloneAll")
+        }
+
+        project.tasks.named("cloneAll") {
+            it.mustRunAfter("initLocalDynamicProjects")
+        }
+
+        // If one of the tasks creates projects in a local container GitLab created by gitlab-container-plugin,
+        // then add the container initialization to initAll and make it run before all other tasks that initAll aggregates.
+        if (hasContainerGitLabTask.value) {
+
+            // Add the container initialization to initAll
+            project.tasks.named("initAll") {
+                it.dependsOn("gitLabContainerCreateAll")
+            }
+
+            // Make all other tasks in initAll run after the container is initialized
+            project.tasks.named("cloneAll") {
+                it.mustRunAfter("gitLabContainerCreateAll")
+            }
+            project.tasks.named("initLocalDynamicProjects") {
+                it.mustRunAfter("gitLabContainerCreateAll")
             }
         }
     }
