@@ -1,4 +1,4 @@
-package app
+package workspace
 
 import org.apache.commons.io.FileUtils
 import org.gradle.api.DefaultTask

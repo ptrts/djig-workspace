@@ -1,6 +1,5 @@
-package app
+package djig
 
-import djig.DjigPluginExtension
 import gitlabContainer.utils.DynamicProjectProperties
 import org.apache.commons.io.FileUtils
 import org.gradle.api.DefaultTask

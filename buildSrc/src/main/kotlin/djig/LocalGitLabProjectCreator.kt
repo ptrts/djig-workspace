@@ -1,4 +1,4 @@
-package app
+package djig
 
 import gitlabContainer.utils.DynamicProjectProperties
 import org.gitlab4j.api.GitLabApi

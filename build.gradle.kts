@@ -1,4 +1,4 @@
-import app.CloneAdjacentGitRepoTask
+import workspace.CloneAdjacentGitRepoTask
 
 // todo cloneExampleApp, когда example-app переедет из репозитория workspace в свой отдельный репозиторий
 
