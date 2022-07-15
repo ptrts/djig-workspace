@@ -26,7 +26,7 @@ constructor(
         description = """
         Forks dynamic projects from application-${sourceSpringBootProfile}.properties. 
         Each fork goes in the project subdirectory ${targetGitLab.directoryPrefix.get()}<original project name>.
-        The forks are also pushed to the local GitLab ${targetGitLab.name.get()}.
+        The forks are also pushed to the local GitLab ${targetGitLab.name}.
         """.trimIndent()
     }
 

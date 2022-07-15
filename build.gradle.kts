@@ -28,11 +28,11 @@ tasks.register("cloneExampleDynamicDev", CloneAdjacentGitRepoTask::class, "examp
     group = "workspace"
 }
 
-tasks.register("cloneCore", CloneAdjacentGitRepoTask::class, "core").configure {
+tasks.register("cloneCore", CloneAdjacentGitRepoTask::class, "core", "core").configure {
     group = "workspace"
 }
 
-tasks.register("cloneDynamicApi", CloneAdjacentGitRepoTask::class, "dynamic-api").configure {
+tasks.register("cloneDynamicApi", CloneAdjacentGitRepoTask::class, "dynamic-api", "dynamic-api").configure {
     group = "workspace"
 }
 

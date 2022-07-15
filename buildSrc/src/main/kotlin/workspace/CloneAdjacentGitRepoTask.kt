@@ -28,7 +28,7 @@ import javax.inject.Inject
  */
 abstract class CloneAdjacentGitRepoTask @Inject constructor(
     @Input val adjacentRepoPostfix: String,
-    @Input val directoryRelativePath: String = adjacentRepoPostfix
+    @Input val directoryRelativePath: String
 ) : DefaultTask() {
 
     companion object {

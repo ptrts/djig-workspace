@@ -9,7 +9,12 @@ class DjigPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
         val extension: DjigPluginExtension = project.extensions.create<DjigPluginExtension>("djig", DjigPluginExtension::class.java)
+        project.afterEvaluate {
+            configureExtension(it, extension)
+        }
+    }
 
+    private fun configureExtension(project: Project, extension: DjigPluginExtension) {
         val hasContainerGitLabTask = object {
             var value: Boolean = false
         }
@@ -18,7 +23,7 @@ class DjigPlugin : Plugin<Project> {
         val appProjectDirectoryRelativePath = extension.localGitLabsCreation.appProjectDirectoryRelativePath.get()
 
         val taskNames: List<String> = extension.localGitLabsCreation.targetGitLabs.map { targetGitLab ->
-            val targetGitLabName: String = targetGitLab.name.get()
+            val targetGitLabName: String = targetGitLab.name
             val taskNamePostfix: String = StringUtils.capitalize(targetGitLabName)
             val taskName: String = "initLocalDynamicProjectsFor${taskNamePostfix}"
 
@@ -43,17 +48,17 @@ class DjigPlugin : Plugin<Project> {
         project.tasks.register("initLocalDynamicProjects") {
             it.group = "djig"
             it.description = """
-            Initializes dynamic projects from application-${sourceSpringBootProfile}.properties for all GitLabs.
-            This is an aggregator task for these tasks: ${taskNames.joinToString(", ")}.
-            """.trimIndent()
+                Initializes dynamic projects from application-${sourceSpringBootProfile}.properties for all GitLabs.
+                This is an aggregator task for these tasks: ${taskNames.joinToString(", ")}.
+                """.trimIndent()
             it.dependsOn(*taskNames.toTypedArray())
         }
 
         project.tasks.register("initAll") {
             it.group = "djig"
             it.description = """
-            An aggregator tasks initializing everything for the workspace.
-            """.trimIndent()
+                An aggregator tasks initializing everything for the workspace.
+                """.trimIndent()
             it.dependsOn("initLocalDynamicProjects", "cloneAll")
         }
 
