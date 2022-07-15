@@ -3,48 +3,50 @@ package djig
 import gitlabContainer.GitLabContainerPluginExtension
 import org.gradle.api.Action
 import org.gradle.api.Named
-import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
 import org.gradle.api.internal.AbstractNamedDomainObjectContainer
 import org.gradle.api.internal.CollectionCallbackActionDecorator
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Nested
 import org.gradle.internal.reflect.Instantiator
 import java.net.URL
 import javax.inject.Inject
 
-open class DjigPluginExtension @Inject constructor(private val objectFactory: ObjectFactory) {
+abstract class DjigPluginExtension {
 
-    val localGitLabsCreation: LocalGitLabsCreation = objectFactory.newInstance(LocalGitLabsCreation::class.java)
+    @get:Nested
+    abstract val localGitLabsCreation: LocalGitLabsCreation
 
-    fun localGitLabsCreation(appProjectDirectoryRelativePath: String, sourceSpringBootProfile: String, configure: Action<LocalGitLabsCreation>) {
+    fun localGitLabsCreation(
+        appProjectDirectoryRelativePath: String,
+        sourceSpringBootProfile: String,
+        configure: Action<LocalGitLabsCreation>
+    ) {
         localGitLabsCreation.appProjectDirectoryRelativePath.set(appProjectDirectoryRelativePath)
         localGitLabsCreation.sourceSpringBootProfile.set(sourceSpringBootProfile)
         configure.execute(localGitLabsCreation)
     }
 
-    abstract class LocalGitLabsCreation @Inject constructor(private val objectFactory: ObjectFactory) {
-        abstract val appProjectDirectoryRelativePath: Property<String>
-        abstract val sourceSpringBootProfile: Property<String>
-        val targetGitLabs: LocalGitLabs = objectFactory.newInstance(LocalGitLabs::class.java)
+    interface LocalGitLabsCreation {
+        val appProjectDirectoryRelativePath: Property<String>
+        val sourceSpringBootProfile: Property<String>
+
+        @get:Nested
+        val targetGitLabs: LocalGitLabs
     }
 
-    abstract class LocalGitLab @Inject constructor(val _name: String): Named {
+    interface LocalGitLab : Named {
 
         companion object {
             val GIT_LAB_CONTAINER_NAME = "gitLabContainer"
         }
 
-        override fun getName(): String = _name
-
-        val isGitLabContainer: Boolean
-            get() = GIT_LAB_CONTAINER_NAME.equals(name)
-
-        abstract val springBootProfile: Property<String>
-        abstract val directoryPrefix: Property<String>
-        abstract val url: Property<URL>
-        abstract val username: Property<String>
-        abstract val password: Property<String?>
+        val springBootProfile: Property<String>
+        val directoryPrefix: Property<String>
+        val url: Property<URL>
+        val username: Property<String>
+        val password: Property<String?>
 
         // todo Кроме этого, сюда возможно стоит добавить еще вот что
         //          Префикс группы
@@ -59,8 +61,11 @@ open class DjigPluginExtension @Inject constructor(private val objectFactory: Ob
         private val objectFactory: ObjectFactory,
         instantiator: Instantiator,
         callbackActionDecorator: CollectionCallbackActionDecorator
-    ) : AbstractNamedDomainObjectContainer<LocalGitLab>(LocalGitLab::class.java, instantiator, callbackActionDecorator) {
-
+    ) : AbstractNamedDomainObjectContainer<LocalGitLab>(
+        LocalGitLab::class.java,
+        instantiator,
+        callbackActionDecorator
+    ) {
         fun fromGitLabContainer(springBootProfile: String, directoryPrefix: String) {
             val gitLabContainerPluginExtension: GitLabContainerPluginExtension = project.extensions.getByType(
                 GitLabContainerPluginExtension::class.java
@@ -76,7 +81,14 @@ open class DjigPluginExtension @Inject constructor(private val objectFactory: Ob
             )
         }
 
-        fun register(name: String, springBootProfile: String, directoryPrefix: String, url: URL, username: String, password: String? = null) {
+        fun register(
+            name: String,
+            springBootProfile: String,
+            directoryPrefix: String,
+            url: URL,
+            username: String,
+            password: String? = null
+        ) {
             register(name) { newTargetGitLab ->
                 newTargetGitLab.directoryPrefix.set(directoryPrefix)
                 newTargetGitLab.url.set(url)
@@ -91,3 +103,7 @@ open class DjigPluginExtension @Inject constructor(private val objectFactory: Ob
         }
     }
 }
+
+// A workaround for adding a default interface method implementation in Kotlin
+val DjigPluginExtension.LocalGitLab.isGitLabContainer: Boolean
+    get() = DjigPluginExtension.LocalGitLab.GIT_LAB_CONTAINER_NAME.equals(name)
