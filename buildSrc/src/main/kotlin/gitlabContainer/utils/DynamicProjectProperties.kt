@@ -6,6 +6,7 @@ import org.gradle.api.plugins.JavaPluginExtension
 import java.io.File
 import java.io.FileReader
 import java.net.URI
+import java.net.URL
 import java.util.*
 import java.util.regex.Pattern
 
@@ -13,8 +14,8 @@ import java.util.regex.Pattern
 //      Может быть, этот класс нужно как-то объединить с теми пропертями, которые у нас используются в самом приложении
 
 class DynamicProjectProperties(
-    val gitlabUri: URI,
-    val projectUri: URI,
+    val gitlabUrl: URL,
+    val projectUrl: URL,
     /**
      * Holds the username if the username+password authentication is used (oauth2).
      * In case of authentication with a personal/project/group access token or an impersonation token holds the token
@@ -29,7 +30,30 @@ class DynamicProjectProperties(
             "^app\\.dynamic-projects\\.(?<projectName>[^.]+)\\.(?<shortPropertyName>.+)$"
         )
 
-        fun loadDynamicProjectsMapFromAppProjectResource(project: Project, propertiesResourcePath: String): Map<String, DynamicProjectProperties> {
+        fun create(
+            projectUrl: URL,
+            username: String,
+            password: String
+        ): DynamicProjectProperties {
+            val projectUri: URI = projectUrl.toURI()
+            return DynamicProjectProperties(
+                username = username,
+                password = password,
+                projectUrl = projectUrl,
+                gitlabUrl = URI(
+                    projectUri.scheme,
+                    projectUri.authority,
+                    null,
+                    null,
+                    null
+                ).toURL()
+            )
+        }
+
+        fun loadDynamicProjectsMapFromAppProjectResource(
+            project: Project,
+            propertiesResourcePath: String
+        ): Map<String, DynamicProjectProperties> {
             val appProject = project.project(":example-app")
             val properties: Properties = loadPropertiesFromProjectResource(appProject, propertiesResourcePath)
             val dynamicProjectsRawMap = loadDynamicProjectsMapRaw(properties)
@@ -66,21 +90,11 @@ class DynamicProjectProperties(
 
         private fun parseProjectPropertiesMap(projectPropertiesMap: MutableMap<String, String>): DynamicProjectProperties {
             val propertiesProjectUrlStr = projectPropertiesMap["url"]!!
-            val projectUri = URI(propertiesProjectUrlStr)
+            val projectUrl = URL(propertiesProjectUrlStr)
 
-            val dynamicProjectProperties = DynamicProjectProperties(
-                username = projectPropertiesMap["username"]!!,
-                password = projectPropertiesMap["password"]!!,
-                projectUri = projectUri,
-                gitlabUri = URI(
-                    projectUri.scheme,
-                    projectUri.authority,
-                    null,
-                    null,
-                    null
-                )
-            )
-            return dynamicProjectProperties
+            val username = projectPropertiesMap["username"]!!
+            val password = projectPropertiesMap["password"]!!
+            return create(projectUrl, username, password)
         }
 
         private fun loadPropertiesFromProjectResource(project: Project, propertiesResourcePath: String): Properties {

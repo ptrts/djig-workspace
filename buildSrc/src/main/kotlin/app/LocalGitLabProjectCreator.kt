@@ -6,8 +6,6 @@ import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group
 import org.gitlab4j.api.models.Namespace
 import org.gitlab4j.api.models.Project
-import org.taruts.gitUtils.GitRemoteUrlParser
-import java.net.URI
 import java.net.URL
 
 object LocalGitLabProjectCreator {
@@ -16,22 +14,22 @@ object LocalGitLabProjectCreator {
         dynamicProjectProperties: DynamicProjectProperties,
         targetGitLabUrl: URL,
         targetGitLabUsername: String,
-        targetGitLabPassword: String
+        targetGitLabPassword: String?
     ) {
 
         val sourceGitLabApi: GitLabApi = getGitLabApi(
-            dynamicProjectProperties.gitlabUri,
+            dynamicProjectProperties.gitlabUrl,
             dynamicProjectProperties.username,
             dynamicProjectProperties.password
         )
 
-        val sourceGitLabProject: Project = sourceGitLabApi.projectApi.getProject(dynamicProjectProperties.gitlabUri.path)
+        val sourceGitLabProject: Project = sourceGitLabApi.projectApi.getProject(dynamicProjectProperties.gitlabUrl.path)
 
         // todo Проверить выкачивание приватных проектов и их закачивание в локальный GitLab
         //      Может быть стоит все выкачиваемое делать публичным, даже если в оригинале оно приватное
 
         val targetGitLabApi: GitLabApi = getGitLabApi(
-            targetGitLabUrl.toURI(),
+            targetGitLabUrl,
             targetGitLabUsername,
             targetGitLabPassword
         )
@@ -95,8 +93,8 @@ object LocalGitLabProjectCreator {
         }
     }
 
-    private fun getGitLabApi(uri: URI, username: String, password: String?): GitLabApi {
-        val urlStr = uri.toString()
+    private fun getGitLabApi(url: URL, username: String, password: String?): GitLabApi {
+        val urlStr = url.toString()
         if (password == null) {
             return GitLabApi(urlStr, username)
         } else {

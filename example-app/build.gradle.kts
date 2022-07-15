@@ -1,4 +1,5 @@
 import djig.DjigPlugin
+import djig.DjigPluginExtension
 import gitlabContainer.GitLabContainerPlugin
 import gitlabContainer.GitLabContainerPluginExtension
 import java.net.URL
@@ -88,3 +89,9 @@ configure<GitLabContainerPluginExtension> {
 }
 
 apply<DjigPlugin>()
+configure<DjigPluginExtension> {
+    localGitLabsCreation {
+        sourceSpringBootProfile.set("dynamic-dev")
+        targetGitLabs.fromGitLabContainer("dynamic-local", "dynamic-local-")
+    }
+}

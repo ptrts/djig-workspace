@@ -1,41 +1,58 @@
 package djig
 
-import gitlabContainer.GitLabContainerPluginExtension
+import app.InitLocalDynamicProjectsTask
+import org.apache.commons.lang3.StringUtils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.tasks.TaskProvider
 
 class DjigPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
-        val djigPluginExtension = project.extensions.create<DjigPluginExtension>("djig", DjigPluginExtension::class.java)
-        setPropertiesFromGitLabContainerIfPossible(project, djigPluginExtension)
-    }
+        val extension: DjigPluginExtension = project.extensions.create<DjigPluginExtension>("djig", DjigPluginExtension::class.java)
 
-    private fun setPropertiesFromGitLabContainerIfPossible(project: Project, djigPluginExtension: DjigPluginExtension) {
-
-        if (!classExists("gitlabContainer.GitLabContainerPluginExtension")) {
-            return
+        val gitLabContainerTaskName = object {
+            var value: String? = null
         }
 
-        val gitLabContainerPluginExtension: GitLabContainerPluginExtension = project.extensions.getByType(
-            GitLabContainerPluginExtension::class.java
-        )
+        val sourceSpringBootProfile = extension.localGitLabsCreation.sourceSpringBootProfile.get()
 
-        val url = gitLabContainerPluginExtension.url.get()
-        val username = gitLabContainerPluginExtension.username.get()
-        val password = gitLabContainerPluginExtension.password.get()
+        val taskNames: List<String> = extension.localGitLabsCreation.targetGitLabs.map { targetGitLab ->
+            val targetGitLabName: String = targetGitLab.name.get()
+            val taskNamePostfix: String = StringUtils.capitalize(targetGitLabName)
+            val taskName: String = "initLocalDynamicProjectsFor${taskNamePostfix}"
 
-        djigPluginExtension.gitLab.url.set(url)
-        djigPluginExtension.gitLab.username.set(username)
-        djigPluginExtension.gitLab.password.set(password)
-    }
+            val taskProvider: TaskProvider<InitLocalDynamicProjectsTask> = project.tasks.register(
+                taskName,
+                InitLocalDynamicProjectsTask::class.java,
+                sourceSpringBootProfile,
+                targetGitLab
+            )
 
-    private fun classExists(name: String): Boolean {
-        try {
-            Class.forName(name);
-            return true;
-        } catch (e: ClassNotFoundException) {
-            return false;
+            if (targetGitLab.isGitLabContainer) {
+                gitLabContainerTaskName.value = taskName
+                taskProvider.configure {
+                    it.mustRunAfter("gitLabContainerCreateAll")
+                }
+            }
+
+            taskName
+        }
+
+        project.tasks.register("initLocalDynamicProjects") {
+            it.group = "djig"
+            it.description = """
+            Initializes dynamic projects from application-${sourceSpringBootProfile}.properties for all GitLabs.
+            This is an aggregator task for these tasks: ${taskNames.joinToString(", ")}.
+            """.trimIndent()
+            it.dependsOn(*taskNames.toTypedArray())
+        }
+
+        if (gitLabContainerTaskName.value != null) {
+            project.tasks.register("gitLabContainerCreateAllWithProjects") {
+                it.group = "gitlab-container"
+                it.dependsOn("gitLabContainerCreateAll", gitLabContainerTaskName.value)
+            }
         }
     }
 }

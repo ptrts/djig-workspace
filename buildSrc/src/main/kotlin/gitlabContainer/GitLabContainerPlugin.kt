@@ -10,26 +10,26 @@ class GitLabContainerPlugin : Plugin<Project> {
 
         project.extensions.create<GitLabContainerPluginExtension>("gitLabContainer", GitLabContainerPluginExtension::class.java)
 
-        project.tasks.register("createContainer", CreateContainerTask::class.java)
+        project.tasks.register("gitLabContainerCreateContainer", CreateContainerTask::class.java)
 
-        project.tasks.register("createUser", CreateUserTask::class.java)
+        project.tasks.register("gitLabContainerCreateUser", CreateUserTask::class.java)
 
-        project.tasks.register("createAll") { task: Task ->
+        project.tasks.register("gitLabContainerCreateAll") { task: Task ->
             task.group = "gitlab-container"
-            task.dependsOn("createContainer", "createUser")
+            task.dependsOn("gitLabContainerCreateContainer", "gitLabContainerCreateUser")
         }
 
-        project.tasks.register("startContainer", StartContainerTask::class.java)
+        project.tasks.register("gitLabContainerStartContainer", StartContainerTask::class.java)
 
-        project.tasks.register("stopContainer", StopContainerTask::class.java)
+        project.tasks.register("gitLabContainerStopContainer", StopContainerTask::class.java)
 
-        project.tasks.register("removeContainer", RemoveContainerTask::class.java)
+        project.tasks.register("gitLabContainerRemoveContainer", RemoveContainerTask::class.java)
 
-        project.tasks.register("removeContainerData", RemoveContainerDataTask::class.java)
+        project.tasks.register("gitLabContainerRemoveContainerData", RemoveContainerDataTask::class.java)
 
-        project.tasks.register("removeAll") { task: Task ->
+        project.tasks.register("gitLabContainerRemoveAll") { task: Task ->
             task.group = "gitlab-container"
-            task.dependsOn("removeContainer", "removeContainerData")
+            task.dependsOn("gitLabContainerRemoveContainer", "gitLabContainerRemoveContainerData")
         }
     }
 }

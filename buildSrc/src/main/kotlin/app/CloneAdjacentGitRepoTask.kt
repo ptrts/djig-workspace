@@ -11,16 +11,25 @@ import javax.inject.Inject
 
 /**
  * This task clones another Git repo of the same group as this project itself into a subdirectory.
- * This project is considered a main one, you clone it first manually.
- * Those cloned to subdirectories are kind of supporting projects.
+ * The project which uses this plagin is considered a workspace project, it's only purpose is to group other projects together.
+ * You clone this workspace project first and you do it manually.
+ * Other projects, which the workspace has are cloned to subdirectories.
  * They are cloned automatically, each by a separate instance of this task.
- * The subdirectories of the supporting projects should be specified in the .gitignore of this project.
- * Remote Git repo URLs of the main project and supporting ones are different only in their postfixes
+ * The subdirectories of the supporting projects should be specified in the .gitignore of the workspace project.
+ * Remote Git repo URLs of the workspace project and containing projects are different only in their postfixes
  * which go just before the ".git" in the end.
  *
- * @param adjacentRepoPostfix   Git repo URL postfix of the cloned project
+ * @param adjacentRepoPostfix
+ * Git repo URL postfix of the cloned project.
+ *
+ * @param directoryRelativePath
+ * The subdirectory inside the workspace project to clone the other project to.
+ * If not specified then the default equal to [adjacentRepoPostfix] is assumed.
  */
-abstract class CloneAdjacentGitRepoTask @Inject constructor(@Input val adjacentRepoPostfix: String) : DefaultTask() {
+abstract class CloneAdjacentGitRepoTask @Inject constructor(
+    @Input val adjacentRepoPostfix: String,
+    @Input val directoryRelativePath: String = adjacentRepoPostfix
+) : DefaultTask() {
 
     companion object {
         /**
@@ -32,7 +41,7 @@ abstract class CloneAdjacentGitRepoTask @Inject constructor(@Input val adjacentR
 
     init {
         group = "workspace"
-        description = "Clones the $adjacentRepoPostfix project into a project subdirectory with the same name"
+        description = "Clones the $adjacentRepoPostfix project into a project subdirectory ${directoryRelativePath}"
     }
 
     @TaskAction
@@ -48,7 +57,7 @@ abstract class CloneAdjacentGitRepoTask @Inject constructor(@Input val adjacentR
         )
 
         // Determining the subdirectory to clone to
-        val sourceDir: File = FileUtils.getFile(project.rootDir, adjacentRepoPostfix)
+        val sourceDir: File = FileUtils.getFile(project.rootDir, directoryRelativePath)
 
         GitUtils.forceClone(adjacentRepoUrl, sourceDir)
     }

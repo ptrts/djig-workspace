@@ -9,7 +9,6 @@ import org.gradle.api.tasks.TaskAction
 import org.taruts.gitUtils.GitUtils
 import org.taruts.processUtils.ProcessRunner
 import java.io.File
-import java.net.URI
 import java.net.URL
 import java.nio.file.Path
 import javax.inject.Inject
@@ -17,21 +16,17 @@ import javax.inject.Inject
 open class InitLocalDynamicProjectsTask
 @Inject
 constructor(
-    @Input val projectNamePrefix: String = DEFAULT_PROJECT_NAME_PREFIX,
-    @Input val springBootProfile: String = DEFAULT_SPRING_BOOT_PROFILE
+    @Input val sourceSpringBootProfile: String,
+    @Input val targetGitLab: DjigPluginExtension.LocalGitLab
 ) : DefaultTask() {
-    companion object {
-        val DEFAULT_PROJECT_NAME_PREFIX: String = "dynamic-local-"
-        val DEFAULT_SPRING_BOOT_PROFILE: String = "dynamic-dev"
-    }
 
     init {
         group = "djig"
 
         description = """
-        Forks dynamic projects from application-${springBootProfile}.properties. 
-        Each fork goes in the project subdirectory ${projectNamePrefix}<original project name>.
-        The forks are also pushed to the local GitLab.
+        Forks dynamic projects from application-${sourceSpringBootProfile}.properties. 
+        Each fork goes in the project subdirectory ${targetGitLab.directoryPrefix.get()}<original project name>.
+        The forks are also pushed to the local GitLab ${targetGitLab.name.get()}.
         """.trimIndent()
     }
 
@@ -39,38 +34,27 @@ constructor(
     fun action() {
         // Get the remote URLs from the profile property file of the project.
         // The project knows the URLs because it's where it gets dynamic Java code when working in springBootProfile
-        val devDynamicProjectsMap = DynamicProjectProperties.loadDynamicProjectsMapFromAppProjectResource(
-            project, "application-${springBootProfile}.properties"
+        val sourceDynamicProjectsMap = DynamicProjectProperties.loadDynamicProjectsMapFromAppProjectResource(
+            project, "application-${sourceSpringBootProfile}.properties"
         )
 
-        val djigPluginExtension: DjigPluginExtension = project.extensions.getByType(
-            DjigPluginExtension::class.java
-        )
-
-        val targetGitLabUrl = djigPluginExtension.gitLab.url.get()
-        val targetGitLabUsername = djigPluginExtension.gitLab.username.get()
-        val targetGitLabPassword = djigPluginExtension.gitLab.password.get()
-
-        // todo Кроме этого, сюда стоит добавить еще вот что
-        //          Префикс группы
-        //          Замена группы
-        //          Постфикс группы
-
-        devDynamicProjectsMap.forEach { projectName, dynamicProjectProperties ->
-            forkProject(projectName, dynamicProjectProperties, targetGitLabUsername, targetGitLabUrl, targetGitLabPassword)
+        sourceDynamicProjectsMap.forEach { projectName, dynamicProjectProperties ->
+            forkProject(projectName, dynamicProjectProperties, targetGitLab)
         }
     }
 
     private fun forkProject(
         projectName: String,
         dynamicProjectProperties: DynamicProjectProperties,
-        targetGitLabUsername: String,
-        targetGitLabUrl: URL,
-        targetGitLabPassword: String
+        targetGitLab: DjigPluginExtension.LocalGitLab
     ) {
+        val targetGitLabUrl = targetGitLab.url.get()
+        val targetGitLabUsername = targetGitLab.username.get()
+        val targetGitLabPassword = targetGitLab.password.get()
+
         // Cloning a subdirectory in the project
         val dynamicLocalSourceDir = getDynamicLocalSourceDir(projectName)
-        GitUtils.clone(dynamicProjectProperties.projectUri.toString(), dynamicLocalSourceDir)
+        GitUtils.clone(dynamicProjectProperties.projectUrl.toString(), dynamicLocalSourceDir)
 
         configureLocalGitRepo(dynamicLocalSourceDir, targetGitLabUsername)
 
@@ -84,7 +68,7 @@ constructor(
     private fun getDynamicLocalSourceDir(projectName: String): File {
         // Determining the path of the local source directory
         val dynamicLocalDirectory: File = Path
-            .of(project.rootProject.projectDir.path, projectNamePrefix + projectName)
+            .of(project.rootProject.projectDir.path, targetGitLab.directoryPrefix.get() + projectName)
             .toAbsolutePath()
             .normalize()
             .toFile()
@@ -105,7 +89,7 @@ constructor(
         )
     }
 
-    private fun pushToLocalGitLab(dynamicLocalSourceDir: File, url: URL, username: String, password: String) {
+    private fun pushToLocalGitLab(dynamicLocalSourceDir: File, url: URL, username: String, password: String?) {
 
         // Setting the Git repo URL as remote for the local Git repo
         val remoteUrlWithCredentials = GitUtils.addCredentialsToGitRepositoryUrl(url.toString(), username, password)
