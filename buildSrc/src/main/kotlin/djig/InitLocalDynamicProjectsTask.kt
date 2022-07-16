@@ -2,6 +2,7 @@ package djig
 
 import gitlabContainer.utils.DynamicProjectProperties
 import org.apache.commons.io.FileUtils
+import org.gitlab4j.api.models.Project
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
@@ -45,7 +46,7 @@ constructor(
 
     private fun forkProject(
         projectName: String,
-        dynamicProjectProperties: DynamicProjectProperties,
+        sourceProjectProperties: DynamicProjectProperties,
         targetGitLab: DjigPluginExtension.LocalGitLab
     ) {
         val targetGitLabUrl = targetGitLab.url.get()
@@ -54,15 +55,20 @@ constructor(
 
         // Cloning a subdirectory in the project
         val dynamicLocalSourceDir = getDynamicLocalSourceDir(projectName)
-        GitUtils.clone(dynamicProjectProperties.projectUrl.toString(), dynamicLocalSourceDir)
+        GitUtils.clone(sourceProjectProperties.projectUrl.toString(), dynamicLocalSourceDir)
 
         configureLocalGitRepo(dynamicLocalSourceDir, targetGitLabUsername)
 
-        LocalGitLabProjectCreator.recreateGroupAndProject(
-            dynamicProjectProperties, targetGitLabUrl, targetGitLabUsername, targetGitLabPassword
+        val targetProject: Project = LocalGitLabProjectCreator.recreateGroupAndProject(
+            sourceProjectProperties, targetGitLabUrl, targetGitLabUsername, targetGitLabPassword
         );
 
-        pushToLocalGitLab(dynamicLocalSourceDir, targetGitLabUrl, targetGitLabUsername, targetGitLabPassword)
+        val targetProjectProperties = DynamicProjectProperties.create(
+            URL(targetProject.httpUrlToRepo), targetGitLabUsername, targetGitLabPassword)
+
+        pushToLocalGitLab(dynamicLocalSourceDir, targetProjectProperties)
+
+        // todo Сделать запихивание свойств новых проектов в соответствующие спринговые проперти файлы
     }
 
     private fun getDynamicLocalSourceDir(projectName: String): File {
@@ -89,10 +95,16 @@ constructor(
         )
     }
 
-    private fun pushToLocalGitLab(dynamicLocalSourceDir: File, url: URL, username: String, password: String?) {
+    private fun pushToLocalGitLab(
+        dynamicLocalSourceDir: File,
+        targetProjectProperties: DynamicProjectProperties
+    ) {
+        val projectUrl = targetProjectProperties.projectUrl
+        val username = targetProjectProperties.username
+        val password = targetProjectProperties.password
 
         // Setting the Git repo URL as remote for the local Git repo
-        val remoteUrlWithCredentials = GitUtils.addCredentialsToGitRepositoryUrl(url.toString(), username, password)
+        val remoteUrlWithCredentials = GitUtils.addCredentialsToGitRepositoryUrl(projectUrl.toString(), username, password)
         ProcessRunner.runProcess(dynamicLocalSourceDir, "git", "remote", "set-url", "origin", remoteUrlWithCredentials.toString())
 
         // Pushing the project into the local GitLab

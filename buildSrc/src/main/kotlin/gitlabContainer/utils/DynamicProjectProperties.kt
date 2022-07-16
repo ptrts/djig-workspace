@@ -27,13 +27,13 @@ class DynamicProjectProperties(
     companion object {
 
         private val dynamicProjectPropertyNamePattern: Pattern = Pattern.compile(
-            "^app\\.dynamic-projects\\.(?<projectName>[^.]+)\\.(?<shortPropertyName>.+)$"
+            "^djig\\.dynamic-projects\\.(?<projectName>[^.]+)\\.(?<shortPropertyName>.+)$"
         )
 
         fun create(
             projectUrl: URL,
             username: String,
-            password: String
+            password: String?
         ): DynamicProjectProperties {
             val projectUri: URI = projectUrl.toURI()
             return DynamicProjectProperties(

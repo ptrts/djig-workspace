@@ -15,7 +15,7 @@ object LocalGitLabProjectCreator {
         targetGitLabUrl: URL,
         targetGitLabUsername: String,
         targetGitLabPassword: String?
-    ) {
+    ): Project {
 
         val sourceGitLabApi: GitLabApi = getGitLabApi(
             dynamicProjectProperties.gitlabUrl,
@@ -36,7 +36,7 @@ object LocalGitLabProjectCreator {
 
         val deepestTargetGroup = copyProjectGroups(sourceGitLabApi, sourceGitLabProject, targetGitLabApi)
 
-        recreateProject(targetGitLabApi, deepestTargetGroup, sourceGitLabProject.name)
+        return recreateProject(targetGitLabApi, deepestTargetGroup, sourceGitLabProject.name)
     }
 
     private fun copyProjectGroups(sourceGitLabApi: GitLabApi, sourceGitLabProject: Project, targetGitLabApi: GitLabApi): Group? {
