@@ -15,7 +15,7 @@ class GitLabContainerPlugin : Plugin<Project> {
         project.tasks.register("gitLabContainerCreateUser", CreateUserTask::class.java)
 
         project.tasks.register("gitLabContainerCreateAll") { task: Task ->
-            task.group = "gitlab-container"
+            task.group = "GitLab container"
             task.dependsOn("gitLabContainerCreateContainer", "gitLabContainerCreateUser")
         }
 
@@ -28,7 +28,7 @@ class GitLabContainerPlugin : Plugin<Project> {
         project.tasks.register("gitLabContainerRemoveContainerData", RemoveContainerDataTask::class.java)
 
         project.tasks.register("gitLabContainerRemoveAll") { task: Task ->
-            task.group = "gitlab-container"
+            task.group = "GitLab container"
             task.dependsOn("gitLabContainerRemoveContainer", "gitLabContainerRemoveContainerData")
         }
     }

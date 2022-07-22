@@ -10,19 +10,20 @@ import java.net.URL
 object LocalGitLabProjectCreator {
 
     fun recreateGroupAndProject(
-        dynamicProjectProperties: DynamicProjectProperties,
+        sourceProjectProperties: DynamicProjectProperties,
         targetGitLabUrl: URL,
         targetGitLabUsername: String,
         targetGitLabPassword: String?
     ): Project {
 
         val sourceGitLabApi: GitLabApi = getGitLabApi(
-            dynamicProjectProperties.gitlabUrl,
-            dynamicProjectProperties.username,
-            dynamicProjectProperties.password
+            sourceProjectProperties.gitlabUrl,
+            sourceProjectProperties.username,
+            sourceProjectProperties.password
         )
 
-        val sourceGitLabProject: Project = sourceGitLabApi.projectApi.getProject(dynamicProjectProperties.gitlabUrl.path)
+        val sourceProjectPath = cloneUrlPathToProjectPath(sourceProjectProperties.projectUrl.path)
+        val sourceGitLabProject: Project = sourceGitLabApi.projectApi.getProject(sourceProjectPath)
 
         // todo Проверить выкачивание приватных проектов и их закачивание в локальный GitLab
         //      Может быть стоит все выкачиваемое делать публичным, даже если в оригинале оно приватное
@@ -48,6 +49,28 @@ object LocalGitLabProjectCreator {
         }
 
         return previousTargetGroup
+    }
+
+    private fun getGitLabApi(url: URL, username: String?, password: String?): GitLabApi {
+        val urlStr = url.toString()
+        if (password == null) {
+            return GitLabApi(urlStr, username)
+        } else {
+            return GitLabApi.oauth2Login(urlStr, username, password, true)
+        }
+    }
+
+    private fun cloneUrlPathToProjectPath(clonePath: String): String {
+        // todo Пока здесь обрабатываются только HTTP URL-ы. Также здесь надо обработать SSH URL-ы
+        // todo Кроме того, здесь у нас все ориентировано на GitLab, не факт, что оно также будет работать в GitHub
+        return httpCloneUrlToProjectPath(clonePath)
+    }
+
+    private fun httpCloneUrlToProjectPath(httpClonePath: String): String {
+        return httpClonePath.replace(
+            """^/(.*)\.git$""".toRegex(),
+            "$1"
+        )
     }
 
     private fun getProjectGroups(gitLabApi: GitLabApi, project: Project): List<Group> {
@@ -77,7 +100,7 @@ object LocalGitLabProjectCreator {
             .withVisibility(sourceGroup.visibility)
             .withlfsEnabled(sourceGroup.lfsEnabled)
             .withRequestAccessEnabled(sourceGroup.requestAccessEnabled)
-            .withParentId(targetParentGroup?.parentId)
+            .withParentId(targetParentGroup?.id)
 
         val pathPrefix =
             if (targetParentGroup == null)
@@ -92,60 +115,52 @@ object LocalGitLabProjectCreator {
         }
     }
 
-    private fun getGitLabApi(url: URL, username: String, password: String?): GitLabApi {
-        val urlStr = url.toString()
-        if (password == null) {
-            return GitLabApi(urlStr, username)
-        } else {
-            return GitLabApi.oauth2Login(urlStr, username, password, true)
-        }
-    }
-
     private fun recreateProject(gitLabApi: GitLabApi, group: Group?, projectName: String): Project {
-        deleteProjectIfExistsAndWaitForDisappearance(gitLabApi, group, projectName)
+        deleteProject(gitLabApi, group, projectName)
         return createProject(gitLabApi, group, projectName)
     }
 
-    private fun deleteProjectIfExistsAndWaitForDisappearance(gitLabApi: GitLabApi, group: Group?, projectName: String) {
-        gitLabApi.projectApi
-            .getOptionalProject(group?.path, projectName)
-            .ifPresent { project ->
-                gitLabApi.projectApi.deleteProject(project.id)
-                waitForProjectDisappearance(gitLabApi, group, project)
-            }
-    }
+    private fun deleteProject(gitLabApi: GitLabApi, group: Group?, projectName: String) {
+        println("Deleting existing project...")
 
-    private fun waitForProjectDisappearance(gitLabApi: GitLabApi, group: Group?, project: Project) {
-        println("Waiting until the existing project is deleted...")
-        var i = 60
+        // todo Вынести количество секунд ожидания куда-нибудь в настройки
+        var i = 300
         while (i > 0) {
-            if (gitLabApi.projectApi.getOptionalProject(group?.path, project.name).isPresent) {
+            val project: Project? = gitLabApi.projectApi.getOptionalProject(group?.fullPath, projectName).orElse(null)
+            if (project == null) {
                 break
             }
             println("$i...")
-            Thread.sleep(1000)
+            gitLabApi.projectApi.deleteProject(project.id)
+            Thread.sleep(5000)
             i--
         }
         if (i == 0) {
-            throw RuntimeException("Could not delete project ${project.name}")
+            throw RuntimeException("Could not delete project ${projectName}")
         }
     }
 
     private fun createProject(gitLabApi: GitLabApi, group: Group?, projectName: String): Project {
         // There are attempts because after disappearing from the API a project may still exist for some time in GitLab underwhater,
         // making attempts to create another project with the same name and in the same namespace fail
-        for (i in 100 downTo 1) {
+        // todo Вынести куда-нибудь в настройки
+        val waitPeriodSeconds = 240
+        for (i in waitPeriodSeconds downTo 1) {
             try {
+                val project: Project? = gitLabApi.projectApi.getOptionalProject(group?.fullPath, projectName).orElse(null)
+                if (project != null) {
+                    throw RuntimeException("Gitlab project creation error: attempt $i, there is a project by this path already")
+                }
                 return gitLabApi.projectApi.createProject(group?.id, projectName)
             } catch (e: GitLabApiException) {
                 // Most probably, a project with the same name and in the same namespace is still in the process of deletion
                 if (i > 1) {
-                    e.validationErrors.forEach { (key, value) ->
+                    e.validationErrors.entries.stream().findFirst().ifPresent { (key, value) ->
                         println("Gitlab project creation error: attempt $i, key = $key, value = $value")
                     }
-                    Thread.sleep(1000)
+                    Thread.sleep(5000)
                 } else {
-                    throw e
+                    throw RuntimeException("Run out of attempts", e)
                 }
             }
         }

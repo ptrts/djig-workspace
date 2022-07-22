@@ -30,9 +30,7 @@ class SectionReplacer(
         Files.move(
             newVersionTempFile.toPath(),
             file.toPath(),
-            StandardCopyOption.REPLACE_EXISTING,
-            StandardCopyOption.ATOMIC_MOVE,
-            StandardCopyOption.COPY_ATTRIBUTES
+            StandardCopyOption.REPLACE_EXISTING
         )
     }
 

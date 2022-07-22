@@ -7,7 +7,7 @@ import org.taruts.processUtils.ProcessRunner
 open class StartContainerTask : DefaultTask() {
 
     init {
-        group = "gitlab-container"
+        group = "GitLab container"
     }
 
     @TaskAction

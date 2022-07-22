@@ -114,14 +114,7 @@ public class GitlabHookRegistrar extends OurSmartLifecycle implements Ordered {
 
         URI repositoryUri = URI.create(repositoryUrlStr);
 
-        String repositoryPath = repositoryUri.getPath();
-        String projectPath = repositoryUri.getPath()
-                .substring(
-                        // After the first "/"
-                        1,
-                        // Up to the trailing ".git"
-                        repositoryPath.lastIndexOf(".git")
-                );
+        String projectPath = repositoryUri.getPath().replaceAll("^/(.*)\\.git$", "$1");
 
         UriComponents gitlabUriComponents = UriComponentsBuilder
                 .fromUri(repositoryUri)

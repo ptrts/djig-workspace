@@ -1,5 +1,6 @@
 package djig.tasks
 
+import org.apache.commons.lang3.StringUtils
 import java.net.URI
 import java.net.URL
 
@@ -8,6 +9,10 @@ import java.net.URL
 
 // todo Нужен нормальный KDoc. Не понятно, это только для парсинга файлов с пропертями, или это что-то более широкого назначения
 
+/**
+ * Note that the credentials ([username] and [password]) are those used for cloning only.
+ * They are not supposed to be used for pushing.
+ */
 class DynamicProjectProperties(
     val gitlabUrl: URL,
     val projectUrl: URL,
@@ -16,7 +21,7 @@ class DynamicProjectProperties(
      * In case of authentication with a personal/project/group access token or an impersonation token holds the token
      * (if so, [password] must be null).
      */
-    val username: String,
+    val username: String?,
     val password: String?,
     val dynamicInterfacePackage: String
 ) {
@@ -24,7 +29,7 @@ class DynamicProjectProperties(
 
         fun create(
             projectUrl: URL,
-            username: String,
+            username: String?,
             password: String?,
             dynamicInterfacePackage: String
         ): DynamicProjectProperties {
@@ -47,10 +52,14 @@ class DynamicProjectProperties(
         fun fromMap(projectPropertiesMap: MutableMap<String, String>): DynamicProjectProperties {
             //@formatter:off
             val propertiesProjectUrlStr : String  = projectPropertiesMap["url"]!!
-            val username                : String  = projectPropertiesMap["username"]!!
-            val password                : String? = projectPropertiesMap["password"]
+            var username                : String?  = projectPropertiesMap["username"]
+            var password                : String? = projectPropertiesMap["password"]
             val dynamicInterfacePackage : String  = projectPropertiesMap["dynamic-interface-package"]!!
             //@formatter:on
+
+            // Replacing empty strings with nulls. For username null would lead to NPE
+            username = StringUtils.defaultIfBlank(username, null)
+            password = StringUtils.defaultIfBlank(password, null)
 
             val projectUrl = URL(propertiesProjectUrlStr)
             return create(projectUrl, username, password, dynamicInterfacePackage)
@@ -61,7 +70,7 @@ class DynamicProjectProperties(
         return mapOf(
             //@formatter:off
             "url"                       to projectUrl.toString(),
-            "username"                  to username,
+            "username"                  to (username ?: ""),
             "password"                  to (password ?: ""),
             "dynamic-interface-package" to dynamicInterfacePackage,
             //@formatter:on

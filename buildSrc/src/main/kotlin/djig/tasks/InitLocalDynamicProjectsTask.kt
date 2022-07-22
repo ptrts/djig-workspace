@@ -11,6 +11,7 @@ import org.gradle.api.tasks.TaskAction
 import org.taruts.gitUtils.GitUtils
 import org.taruts.processUtils.ProcessRunner
 import java.io.File
+import java.net.URI
 import java.net.URL
 import java.nio.file.Path
 import java.util.stream.Stream
@@ -37,7 +38,7 @@ constructor(
     @TaskAction
     fun action() {
         val targetDynamicProjectsMap = forkProjects()
-        writeSourceProfileDynamicProjectProperties(targetDynamicProjectsMap)
+        writeTargetProfileDynamicProjectProperties(targetDynamicProjectsMap)
     }
 
     private fun forkProjects(): HashMap<String, DynamicProjectProperties> {
@@ -74,8 +75,10 @@ constructor(
             sourceProjectProperties, targetGitLabUrl, targetGitLabUsername, targetGitLabPassword
         )
 
+        val projectUrl = replaceDomainNamePlaceholder(targetProject.httpUrlToRepo, targetGitLabUrl)
+
         val targetProjectProperties = DynamicProjectProperties.create(
-            projectUrl = URL(targetProject.httpUrlToRepo),
+            projectUrl = projectUrl,
             username = targetGitLabUsername,
             password = targetGitLabPassword,
             dynamicInterfacePackage = sourceProjectProperties.dynamicInterfacePackage
@@ -110,6 +113,26 @@ constructor(
         )
     }
 
+    private fun replaceDomainNamePlaceholder(targetProjectUrlStr: String, targetGitLabUrl: URL): URL {
+        val targetGitLabUri = targetGitLabUrl.toURI()
+        var targetProjectUri = URI(targetProjectUrlStr)
+
+        val domainNamePlaceholder = "gitlab.domain.name.placeholder"
+        if (targetProjectUri.authority.equals(domainNamePlaceholder).not()) {
+            throw IllegalStateException("The authority replaced is expected to be [$domainNamePlaceholder]")
+        }
+
+        targetProjectUri = URI(
+            targetProjectUri.scheme,
+            targetGitLabUri.authority,
+            targetProjectUri.path,
+            targetProjectUri.query,
+            targetProjectUri.fragment
+        )
+
+        return targetProjectUri.toURL()
+    }
+
     private fun pushToLocalGitLab(
         dynamicLocalSourceDir: File,
         targetProjectProperties: DynamicProjectProperties
@@ -126,7 +149,7 @@ constructor(
         ProcessRunner.runProcess(dynamicLocalSourceDir, "git", "push", "origin", "master")
     }
 
-    private fun writeSourceProfileDynamicProjectProperties(targetDynamicProjectsMap: HashMap<String, DynamicProjectProperties>) {
+    private fun writeTargetProfileDynamicProjectProperties(targetDynamicProjectsMap: HashMap<String, DynamicProjectProperties>) {
         val targetSpringBootProfile = targetGitLab.springBootProfile.get()
         val targetSpringBootProfilePropertiesFile: File = getProfilePropertiesFile(targetSpringBootProfile)
 

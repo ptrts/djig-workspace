@@ -8,8 +8,8 @@ import org.taruts.processUtils.ProcessRunner
 open class RemoveContainerTask : DefaultTask() {
 
     init {
-        group = "gitlab-container"
-        dependsOn("stopContainer")
+        group = "GitLab container"
+        dependsOn("gitLabContainerStopContainer")
     }
 
     @TaskAction

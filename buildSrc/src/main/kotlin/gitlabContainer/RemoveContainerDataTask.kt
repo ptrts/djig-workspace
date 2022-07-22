@@ -12,23 +12,23 @@ import java.util.stream.Stream
 open class RemoveContainerDataTask : DefaultTask() {
 
     init {
-        group = "gitlab-container"
+        group = "GitLab container"
 
         description = """
         Removes the container data in host directories having been mounted inside the container.
         This task is supposed to be run after the container itself is deleted
         """.trimIndent()
 
-        mustRunAfter("removeContainer")
+        mustRunAfter("gitLabContainerRemoveContainer")
     }
 
     @TaskAction
     fun action() {
 
         // Get the "home" directory as a File object
-        val hostHomeDirectory: File = FileUtils.getFile(project.projectDir, "home")
+        val hostHomeDirectory: File = FileUtils.getFile(project.projectDir, "gitlab-container-home")
 
-        // If the "home" does not exist, then we don't need to remove everything, everything has been removed already.
+        // If the "gitlab-container-home" does not exist, then we don't need to remove everything, everything has been removed already.
         if (!hostHomeDirectory.exists()) {
             return
         }
@@ -41,7 +41,7 @@ open class RemoveContainerDataTask : DefaultTask() {
         // Then the directories
         removeHostVolumeDirectories(hostHomeDirectory)
 
-        // Then the "home" directory that contains all those directories that were mounted inside the GitLab container
+        // Then the "gitlab-container-home" directory that contains all those directories that were mounted inside the GitLab container
         FileUtils.deleteDirectory(hostHomeDirectory)
     }
 
@@ -79,13 +79,14 @@ open class RemoveContainerDataTask : DefaultTask() {
         // and granted the write permission only to the owner ("root" or "docker").
         // But we still can remove those files if rather than doing it ourselves directly we ask Docker to do it.
         // This is a hack of some sort.
-        // We run a minimal Docker container mounting the "home" directory inside.
-        // This is different from when we run the GitLab container, where we mount subdirectories of "home" rather than "home" itself.
-        // This way the subdirectories of "home" are not volume mount points,
+        // We run a minimal Docker container mounting the "gitlab-container-home" directory inside.
+        // This is different from when we run the GitLab container, where we mount subdirectories of "gitlab-container-home"
+        // rather than "gitlab-container-home" itself.
+        // This way the subdirectories of "gitlab-container-home" are not volume mount points,
         // they are just data inside a volume and so the container can delete them with a standard Linux command.
 
         val hostHomePath: String = hostHomeDirectory.canonicalPath
-        val containerHomePath = "/tmp/pavel-taruts/gitlab-container/home"
+        val containerHomePath = "/tmp/pavel-taruts/gitlab-container/gitlab-container-home"
         val bindMounts: List<String> = listOf(
             "--volume", "$hostHomePath:$containerHomePath",
         )

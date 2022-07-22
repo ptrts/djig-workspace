@@ -12,7 +12,7 @@ import java.util.regex.Pattern
 open class CreateUserTask : DefaultTask() {
 
     init {
-        group = "gitlab-container"
+        group = "GitLab container"
     }
 
     @TaskAction

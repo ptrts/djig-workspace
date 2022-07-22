@@ -8,7 +8,7 @@ import org.taruts.processUtils.ProcessRunner
 open class StopContainerTask : DefaultTask() {
 
     init {
-        group = "gitlab-container"
+        group = "GitLab container"
     }
 
     @TaskAction

@@ -20,10 +20,10 @@ import java.time.Duration
 open class CreateContainerTask : DefaultTask() {
 
     init {
-        group = "gitlab-container"
+        group = "GitLab container"
 
         timeout.set(Duration.ofMinutes(15))
-        dependsOn("removeAll")
+        dependsOn("gitLabContainerRemoveAll")
     }
 
     @TaskAction
@@ -45,7 +45,7 @@ open class CreateContainerTask : DefaultTask() {
         // We create them here ourselves to prevent Docker from doing so.
         // This is because if Docker creates them, they'll have different permitions,
         // which would make it harder to delete them when we decide to remove the container.
-        val home: File = FileUtils.getFile(project.projectDir, "home")
+        val home: File = FileUtils.getFile(project.projectDir, "gitlab-container-home")
         FileUtils.getFile(home, "config").mkdirs()
         FileUtils.getFile(home, "logs").mkdirs()
         FileUtils.getFile(home, "data").mkdirs()
@@ -78,7 +78,7 @@ open class CreateContainerTask : DefaultTask() {
             )
         }
 
-        command.add("gitlab/gitlab-ce:14.10.2-ce.0")
+        command.add("gitlab/gitlab-ce:15.2.0-ce.0")
 
         ProcessRunner.runProcess(project.projectDir, command)
     }

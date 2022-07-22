@@ -16,7 +16,7 @@ object GitLabContainerMountPoints {
     }
 
     fun getBindMounts(project: Project): List<String> {
-        val home: String = FileUtils.getFile(project.projectDir, "home").canonicalPath
+        val home: String = FileUtils.getFile(project.projectDir, "gitlab-container-home").canonicalPath
         return listOf(
             "--volume", "$home/config:$CONFIG",
             "--volume", "$home/logs:$LOGS",
