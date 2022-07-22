@@ -20,20 +20,24 @@ configure<DjigPluginExtension> {
 
 // todo cloneExampleApp, когда example-app переедет из репозитория workspace в свой отдельный репозиторий
 
-tasks.register("cloneExampleDynamicApi", CloneAdjacentGitRepoTask::class, "example/dynamic-api", "example-dynamic-api").configure {
-    group = "workspace"
+tasks.register("cloneExampleDynamicApi", CloneAdjacentGitRepoTask::class) {
+    adjacentRepoPostfix = "example/dynamic-api"
+    directoryRelativePath = "example-dynamic-api"
 }
 
-tasks.register("cloneExampleDynamicDev", CloneAdjacentGitRepoTask::class, "example/dynamic-dev", "example-dynamic-dev").configure {
-    group = "workspace"
+tasks.register("cloneExampleDynamicDev", CloneAdjacentGitRepoTask::class) {
+    adjacentRepoPostfix = "example/dynamic-dev"
+    directoryRelativePath = "example-dynamic-dev"
 }
 
-tasks.register("cloneCore", CloneAdjacentGitRepoTask::class, "core", "core").configure {
-    group = "workspace"
+tasks.register("cloneCore", CloneAdjacentGitRepoTask::class) {
+    adjacentRepoPostfix = "core"
+    directoryRelativePath = "core"
 }
 
-tasks.register("cloneDynamicApi", CloneAdjacentGitRepoTask::class, "dynamic-api", "dynamic-api").configure {
-    group = "workspace"
+tasks.register("cloneDynamicApi", CloneAdjacentGitRepoTask::class) {
+    adjacentRepoPostfix = "dynamic-api"
+    directoryRelativePath = "dynamic-api"
 }
 
 tasks.register("cloneAll") {

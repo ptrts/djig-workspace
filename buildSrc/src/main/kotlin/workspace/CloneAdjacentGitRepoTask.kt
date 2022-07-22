@@ -26,10 +26,7 @@ import javax.inject.Inject
  * The subdirectory inside the workspace project to clone the other project to.
  * If not specified then the default equal to [adjacentRepoPostfix] is assumed.
  */
-abstract class CloneAdjacentGitRepoTask @Inject constructor(
-    @Input val adjacentRepoPostfix: String,
-    @Input val directoryRelativePath: String
-) : DefaultTask() {
+abstract class CloneAdjacentGitRepoTask : DefaultTask() {
 
     companion object {
         /**
@@ -39,13 +36,34 @@ abstract class CloneAdjacentGitRepoTask @Inject constructor(
         private const val MAIN_PROJECT_REPO_POSTFIX: String = "workspace"
     }
 
+    @Input
+    var adjacentRepoPostfix: String? = null
+        set(value) {
+            field = value
+            updateDescription()
+        }
+
+    @Input
+    var directoryRelativePath: String? = null
+        set(value) {
+            field = value
+            updateDescription()
+        }
+
     init {
         group = "workspace"
-        description = "Clones the $adjacentRepoPostfix project into a project subdirectory ${directoryRelativePath}"
+    }
+
+    private fun updateDescription() {
+        description = "Clones the $adjacentRepoPostfix project into a project subdirectory projects/$directoryRelativePath"
     }
 
     @TaskAction
     fun action() {
+
+        val adjacentRepoPostfix: String = this.adjacentRepoPostfix!!
+        val directoryRelativePath: String = this.directoryRelativePath!!
+
         // Get the remote URL of the main project
         val startingPointRepoUrl: String =
             ProcessRunner.runProcess(project.projectDir, "git", "remote", "get-url", "origin")
@@ -57,7 +75,7 @@ abstract class CloneAdjacentGitRepoTask @Inject constructor(
         )
 
         // Determining the subdirectory to clone to
-        val sourceDir: File = FileUtils.getFile(project.rootDir, directoryRelativePath)
+        val sourceDir: File = FileUtils.getFile(project.rootDir, "projects", directoryRelativePath)
 
         GitUtils.forceClone(adjacentRepoUrl, sourceDir)
     }
