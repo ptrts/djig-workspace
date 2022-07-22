@@ -155,9 +155,16 @@ object LocalGitLabProjectCreator {
             } catch (e: GitLabApiException) {
                 // Most probably, a project with the same name and in the same namespace is still in the process of deletion
                 if (i > 1) {
-                    e.validationErrors.entries.stream().findFirst().ifPresent { (key, value) ->
-                        println("Gitlab project creation error: attempt $i, key = $key, value = $value")
+                    val validationErrors = e.validationErrors
+                    val message = if (validationErrors == null) {
+                        e.message
+                    } else {
+                        validationErrors.entries.stream()
+                            .findFirst()
+                            .map { (key, value) -> "key = $key, value = $value" }
+                            .orElse("no message")
                     }
+                    println("Gitlab project creation error: attempt $i, $message")
                     Thread.sleep(5000)
                 } else {
                     throw RuntimeException("Run out of attempts", e)

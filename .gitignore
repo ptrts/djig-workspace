@@ -7,11 +7,7 @@
 .gradle
 build
 
-example-working-directory
-example-dynamic-api
-example-dynamic-dev
-example-dynamic-local
+projects/*
+!projects/example-app
 
-core
-dynamic-api
 gitlab-container-home

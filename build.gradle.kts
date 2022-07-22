@@ -13,7 +13,7 @@ configure<GitLabContainerPluginExtension> {
 
 apply<DjigPlugin>()
 configure<DjigPluginExtension> {
-    localGitLabsCreation("example-app", "dynamic-dev") {
+    localGitLabsCreation("projects/example-app", "dynamic-dev") {
         targetGitLabs.fromGitLabContainer("dynamic-local", "dynamic-local-")
     }
 }

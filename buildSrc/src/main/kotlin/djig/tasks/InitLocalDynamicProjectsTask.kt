@@ -91,8 +91,9 @@ constructor(
 
     private fun getDynamicLocalSourceDir(projectName: String): File {
         // Determining the path of the local source directory
+        // todo Это "projects" - это должен быть либо параметр плагина workspace, либо константа этого плагина
         val dynamicLocalDirectory: File = Path
-            .of(project.rootProject.projectDir.path, targetGitLab.directoryPrefix.get() + projectName)
+            .of(project.rootProject.projectDir.path, "projects", targetGitLab.directoryPrefix.get() + projectName)
             .toAbsolutePath()
             .normalize()
             .toFile()
