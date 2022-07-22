@@ -1,6 +1,8 @@
-package djig
+package djig.tasks
 
-import gitlabContainer.utils.DynamicProjectProperties
+import common.StandaloneChildProjectUtils
+import common.sections.PropertiesFileSectionUtils
+import djig.DjigPluginExtension
 import org.apache.commons.io.FileUtils
 import org.gitlab4j.api.models.Project
 import org.gradle.api.DefaultTask
@@ -11,6 +13,7 @@ import org.taruts.processUtils.ProcessRunner
 import java.io.File
 import java.net.URL
 import java.nio.file.Path
+import java.util.stream.Stream
 import javax.inject.Inject
 
 open class InitLocalDynamicProjectsTask
@@ -33,22 +36,30 @@ constructor(
 
     @TaskAction
     fun action() {
+        val targetDynamicProjectsMap = forkProjects()
+        writeSourceProfileDynamicProjectProperties(targetDynamicProjectsMap)
+    }
+
+    private fun forkProjects(): HashMap<String, DynamicProjectProperties> {
         // Get the remote URLs from the profile property file of the project.
         // The project knows the URLs because it's where it gets dynamic Java code when working in springBootProfile
-        val sourceDynamicProjectsMap = DynamicProjectProperties.loadDynamicProjectsMapFromAppProjectResource(
-            project, appProjectDirectoryRelativePath, "application-${sourceSpringBootProfile}.properties"
-        )
+        val sourceSpringBootProfilePropertiesFile: File = getProfilePropertiesFile(sourceSpringBootProfile)
+        val sourceDynamicProjectsMap =
+            DynamicProjectPropertiesUtils.loadDynamicProjectsFromSpringBootProperties(sourceSpringBootProfilePropertiesFile)
 
-        sourceDynamicProjectsMap.forEach { projectName, dynamicProjectProperties ->
-            forkProject(projectName, dynamicProjectProperties, targetGitLab)
+        val targetDynamicProjectsMap = HashMap<String, DynamicProjectProperties>()
+        sourceDynamicProjectsMap.entries.forEach { (projectName, dynamicProjectProperties) ->
+            val targetProjectProperties: DynamicProjectProperties = forkProject(projectName, dynamicProjectProperties, targetGitLab)
+            targetDynamicProjectsMap[projectName] = targetProjectProperties
         }
+        return targetDynamicProjectsMap
     }
 
     private fun forkProject(
         projectName: String,
         sourceProjectProperties: DynamicProjectProperties,
         targetGitLab: DjigPluginExtension.LocalGitLab
-    ) {
+    ): DynamicProjectProperties {
         val targetGitLabUrl = targetGitLab.url.get()
         val targetGitLabUsername = targetGitLab.username.get()
         val targetGitLabPassword = targetGitLab.password.get()
@@ -61,14 +72,18 @@ constructor(
 
         val targetProject: Project = LocalGitLabProjectCreator.recreateGroupAndProject(
             sourceProjectProperties, targetGitLabUrl, targetGitLabUsername, targetGitLabPassword
-        );
+        )
 
         val targetProjectProperties = DynamicProjectProperties.create(
-            URL(targetProject.httpUrlToRepo), targetGitLabUsername, targetGitLabPassword)
+            projectUrl = URL(targetProject.httpUrlToRepo),
+            username = targetGitLabUsername,
+            password = targetGitLabPassword,
+            dynamicInterfacePackage = sourceProjectProperties.dynamicInterfacePackage
+        )
 
         pushToLocalGitLab(dynamicLocalSourceDir, targetProjectProperties)
 
-        // todo Сделать запихивание свойств новых проектов в соответствующие спринговые проперти файлы
+        return targetProjectProperties
     }
 
     private fun getDynamicLocalSourceDir(projectName: String): File {
@@ -109,5 +124,46 @@ constructor(
 
         // Pushing the project into the local GitLab
         ProcessRunner.runProcess(dynamicLocalSourceDir, "git", "push", "origin", "master")
+    }
+
+    private fun writeSourceProfileDynamicProjectProperties(targetDynamicProjectsMap: HashMap<String, DynamicProjectProperties>) {
+        val targetSpringBootProfile = targetGitLab.springBootProfile.get()
+        val targetSpringBootProfilePropertiesFile: File = getProfilePropertiesFile(targetSpringBootProfile)
+
+        // Формируем объединенный стрим пропертей всех динамических проектов
+        val allTaretProjectsPropertiesStream: Stream<String> =
+            targetDynamicProjectsMap.entries.stream().flatMap { (projectName, dynamicProjectProperties) ->
+                return@flatMap getDynamicProjectPropertiesStream(projectName, dynamicProjectProperties)
+            }
+
+        PropertiesFileSectionUtils.replaceSectionContents(
+            file = targetSpringBootProfilePropertiesFile,
+            // todo djig.dynamic-projects вынести в какую-нибудь константу. Может быть в утилах DynamicProjectPropertiesUtils
+            sectionName = "djig.dynamic-projects",
+            newContentsStream = allTaretProjectsPropertiesStream
+        )
+    }
+
+    private fun getProfilePropertiesFile(springBootProfile: String): File {
+        return StandaloneChildProjectUtils.getResourceFile(
+            project,
+            appProjectDirectoryRelativePath,
+            "application-$springBootProfile.properties"
+        )
+    }
+
+    private fun getDynamicProjectPropertiesStream(
+        projectName: String,
+        dynamicProjectProperties: DynamicProjectProperties
+    ): Stream<String>? {
+        val projectShortNamePropertiesMap: Map<String, String> = dynamicProjectProperties.toShortNameMap()
+
+        val projectFullPropertyDefinitionsStream: Stream<String> =
+            projectShortNamePropertiesMap.entries.stream().map { (shortPropertyName, propertyValueStr) ->
+                return@map DynamicProjectPropertiesUtils.formatProperty(projectName, shortPropertyName, propertyValueStr)
+            }
+
+        // Adding an empty line after property definitions of each project
+        return Stream.concat(projectFullPropertyDefinitionsStream, Stream.of(""))
     }
 }

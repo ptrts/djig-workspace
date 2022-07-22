@@ -1,6 +1,5 @@
-package djig
+package djig.tasks
 
-import gitlabContainer.utils.DynamicProjectProperties
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.GitLabApiException
 import org.gitlab4j.api.models.Group

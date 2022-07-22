@@ -1,5 +1,6 @@
 package djig
 
+import djig.tasks.InitLocalDynamicProjectsTask
 import org.apache.commons.lang3.StringUtils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
