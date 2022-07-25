@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
     <configuration default="false" name="Main (dynamic-local)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
         <option name="ACTIVE_PROFILES" value="dev, dynamic-local"/>
-        <module name="workspace.example-app.main"/>
-        <option name="SPRING_BOOT_MAIN_CLASS" value="org.taruts.djig.app.Main"/>
+        <module name="example-app.main"/>
+        <option name="SPRING_BOOT_MAIN_CLASS" value="org.taruts.djig.example.app.Main"/>
         <option name="WORKING_DIRECTORY" value="file://$ProjectFileDir$/example-working-directory"/>
         <method v="2">
             <option name="Make" enabled="true"/>

@@ -34,31 +34,15 @@ dependencies {
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
-    // Spring Boot + WebFlux
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-
-    // Spring Retry
-    implementation("org.springframework:spring-aspects")
-    implementation("org.springframework.retry:spring-retry:1.2.5.RELEASE")
-
     // The API that the core of our application and the dynamic part use to communicate to each other
     implementation("org.taruts.djig.example:dynamic-api:001")
-
-    // GitLab API
-    implementation("org.gitlab4j:gitlab4j-api:5.0.1")
-
-    // Our util libraries
-    implementation("org.taruts:git-utils:001")
-    implementation("org.taruts:gradle-utils:001")
 
     // Utils
     implementation("org.apache.commons:commons-lang3")
     implementation("commons-io:commons-io:2.11.0")
     implementation("com.google.guava:guava:31.1-jre")
 
-    // Reflections
-    implementation("org.reflections:reflections:0.10.2")
+    implementation("org.taruts.djig:core:001")
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Tests

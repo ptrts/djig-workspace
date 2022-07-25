@@ -1,4 +1,4 @@
-package org.taruts.djig.app;
+package org.taruts.djig.example.app;
 
 import org.springframework.stereotype.Component;
 import org.taruts.djig.example.dynamicApi.main.MessagePrefixProvider;

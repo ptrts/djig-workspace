@@ -1,17 +1,17 @@
-package org.taruts.djig.app;
+package org.taruts.djig.example.app;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.taruts.djig.app.dynamicWiring.childContext.configurationProperties.DjigConfigurationProperties;
+import org.taruts.djig.core.childContext.configurationProperties.DjigConfigurationProperties;
 
-@SpringBootApplication(scanBasePackages = "org.taruts.djig.app")
+@SpringBootApplication(scanBasePackages = "org.taruts.djig.example.app")
 @EnableConfigurationProperties(DjigConfigurationProperties.class)
+
+// todo Эти штуки как-то перенести в библиотеку
 @EnableAsync
-@EnableRetry
 @Slf4j
 public class Main {
 
