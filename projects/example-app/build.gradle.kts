@@ -35,14 +35,14 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     // The API that the core of our application and the dynamic part use to communicate to each other
-    implementation("org.taruts.djig.example:dynamic-api:001")
+    implementation("org.taruts.djig.example:example-dynamic-api:001")
 
     // Utils
     implementation("org.apache.commons:commons-lang3")
     implementation("commons-io:commons-io:2.11.0")
     implementation("com.google.guava:guava:31.1-jre")
 
-    implementation("org.taruts.djig:core:001")
+    implementation("org.taruts.djig:djig-core:001")
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Tests
