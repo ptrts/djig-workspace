@@ -8,6 +8,6 @@
 build
 
 projects/*
-!projects/example-app
+!projects/example-app-old
 
 gitlab-container-home
