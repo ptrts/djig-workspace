@@ -30,17 +30,17 @@ tasks.register("cloneExampleDynamicDev", CloneAdjacentGitRepoTask::class) {
     directoryRelativePath = "example-dynamic-dev"
 }
 
-tasks.register("cloneCore", CloneAdjacentGitRepoTask::class) {
-    adjacentRepoPostfix = "core"
-    directoryRelativePath = "core"
+tasks.register("cloneDjigSpringBootStarter", CloneAdjacentGitRepoTask::class) {
+    adjacentRepoPostfix = "spring-boot-starter"
+    directoryRelativePath = "djig-spring-boot-starter"
 }
 
-tasks.register("cloneDynamicApi", CloneAdjacentGitRepoTask::class) {
+tasks.register("cloneDjigDynamicApi", CloneAdjacentGitRepoTask::class) {
     adjacentRepoPostfix = "dynamic-api"
-    directoryRelativePath = "dynamic-api"
+    directoryRelativePath = "djig-dynamic-api"
 }
 
 tasks.register("cloneAll") {
     group = "workspace"
-    dependsOn("cloneExampleDynamicApi", "cloneExampleDynamicDev", "cloneCore", "cloneDynamicApi")
+    dependsOn("cloneExampleDynamicApi", "cloneExampleDynamicDev", "cloneDjigSpringBootStarter", "cloneDjigDynamicApi")
 }
