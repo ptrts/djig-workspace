@@ -18,7 +18,10 @@ configure<DjigPluginExtension> {
     }
 }
 
-// todo cloneExampleApp, когда example-app переедет из репозитория workspace в свой отдельный репозиторий
+tasks.register("cloneExampleApp", CloneAdjacentGitRepoTask::class) {
+    adjacentRepoPostfix = "example/app"
+    directoryRelativePath = "example-app"
+}
 
 tasks.register("cloneExampleDynamicApi", CloneAdjacentGitRepoTask::class) {
     adjacentRepoPostfix = "example/dynamic-api"
