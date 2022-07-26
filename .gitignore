@@ -7,7 +7,8 @@
 .gradle
 build
 
-projects/*
-!projects/example-app-old
+### workspace Gradle plugin ###
+projects
 
+### gitlab-container Gradle plugin ###
 gitlab-container-home
