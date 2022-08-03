@@ -15,9 +15,9 @@ repositories {
 dependencies {
 
     // Our libraries
-    implementation("org.taruts:git-utils:001")
-    implementation("org.taruts:gradle-utils:001")
-    implementation("org.taruts:process-utils:001")
+    implementation("org.taruts:taruts-git-utils:1.0.0")
+    implementation("org.taruts:taruts-gradle-utils:1.0.0")
+    implementation("org.taruts:taruts-process-utils:1.0.0")
 
     // Utils
     implementation("org.apache.commons:commons-lang3:3.12.0")
