@@ -1,4 +1,4 @@
-package common.sections
+package sections
 
 import java.io.File
 import java.io.PrintWriter
@@ -36,9 +36,10 @@ class SectionReplacer(
 
     override fun onLine(line: String, isOurSectionStart: Boolean, isOurSectionEnd: Boolean) {
         if (isOurSectionEnd) {
+            // Put the inserted contents between the section bracket comments
             newContentsStream.forEach(printWriter::println)
 
-            // И эту саму строчку и следующую уже будем записывать в новую версию файла
+            // We should copy to the new version of the file this line and all the following ones
             copyLines = true
         }
 
@@ -47,7 +48,7 @@ class SectionReplacer(
         }
 
         if (isOurSectionStart) {
-            // Следующую строчку уже не будем записывать в новую версию файла
+            // The next line won't go to the new version of the file
             copyLines = false
         }
     }

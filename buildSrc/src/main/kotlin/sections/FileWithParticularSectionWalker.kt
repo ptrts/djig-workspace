@@ -1,4 +1,4 @@
-package common.sections
+package sections
 
 import java.io.File
 

@@ -1,4 +1,4 @@
-package common
+package djig.tasks
 
 import org.apache.commons.io.FileUtils
 import org.gradle.api.Project

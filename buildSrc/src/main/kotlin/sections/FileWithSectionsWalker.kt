@@ -1,4 +1,4 @@
-package common.sections
+package sections
 
 import java.io.File
 import java.util.*
@@ -6,11 +6,11 @@ import java.util.regex.Pattern
 
 abstract class FileWithSectionsWalker(protected val file: File) {
 
-    // Паттерн для начала секции
-    // ## section djig.dynamic-projects {
+    // Section start patter
+    // ## section <name> {
     private val sectionStartPattern = Pattern.compile("""^\s*##\s*section\s+(?<sectionName>[\p{Alnum}\-._]+)\s*\{\s*$""")
 
-    // Паттерн для окончания версии
+    // Section end pattern
     // ## }
     private val sectionEndPattern = Pattern.compile("""^\s*##\s*\}\s*$""")
 

@@ -1,4 +1,4 @@
-package common
+package djig.tasks
 
 import java.io.File
 import java.io.FileReader

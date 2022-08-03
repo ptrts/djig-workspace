@@ -1,7 +1,6 @@
 package djig.tasks
 
-import common.StandaloneChildProjectUtils
-import common.sections.PropertiesFileSectionUtils
+import sections.PropertiesFileSectionUtils
 import djig.DjigPluginExtension
 import org.apache.commons.io.FileUtils
 import org.gitlab4j.api.models.Project
