@@ -2,7 +2,8 @@ import djig.DjigPlugin
 import djig.DjigPluginExtension
 import gitlabContainer.GitLabContainerPlugin
 import gitlabContainer.GitLabContainerPluginExtension
-import workspace.CloneAdjacentGitRepoTask
+import workspace.WorkspacePlugin
+import workspace.WorkspacePluginExtension
 
 apply<GitLabContainerPlugin>()
 configure<GitLabContainerPluginExtension> {
@@ -18,32 +19,12 @@ configure<DjigPluginExtension> {
     }
 }
 
-tasks.register("cloneExampleApp", CloneAdjacentGitRepoTask::class) {
-    adjacentRepoPostfix = "example/app"
-    directoryRelativePath = "example-app"
-}
-
-tasks.register("cloneExampleDynamicApi", CloneAdjacentGitRepoTask::class) {
-    adjacentRepoPostfix = "example/dynamic-api"
-    directoryRelativePath = "example-dynamic-api"
-}
-
-tasks.register("cloneExampleDynamicDev", CloneAdjacentGitRepoTask::class) {
-    adjacentRepoPostfix = "example/dynamic-dev"
-    directoryRelativePath = "example-dynamic-dev"
-}
-
-tasks.register("cloneDjigSpringBootStarter", CloneAdjacentGitRepoTask::class) {
-    adjacentRepoPostfix = "spring-boot-starter"
-    directoryRelativePath = "djig-spring-boot-starter"
-}
-
-tasks.register("cloneDjigDynamicApi", CloneAdjacentGitRepoTask::class) {
-    adjacentRepoPostfix = "dynamic-api"
-    directoryRelativePath = "djig-dynamic-api"
-}
-
-tasks.register("cloneAll") {
-    group = "workspace"
-    dependsOn("cloneExampleDynamicApi", "cloneExampleDynamicDev", "cloneDjigSpringBootStarter", "cloneDjigDynamicApi")
+apply<WorkspacePlugin>()
+configure<WorkspacePluginExtension> {
+    workspaceRepositoryRelativePath.set("workspace")
+    workspaceProject("example/app", "example-app")
+    workspaceProject("example/dynamic-api", "example-dynamic-api")
+    workspaceProject("example/dynamic-dev", "example-dynamic-dev")
+    workspaceProject("spring-boot-starter", "djig-spring-boot-starter")
+    workspaceProject("dynamic-api", "djig-dynamic-api")
 }

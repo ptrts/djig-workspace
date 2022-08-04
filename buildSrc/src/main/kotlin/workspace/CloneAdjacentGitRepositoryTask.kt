@@ -7,37 +7,37 @@ import org.gradle.api.tasks.TaskAction
 import org.taruts.gitUtils.GitUtils
 import org.taruts.processUtils.ProcessRunner
 import java.io.File
-import javax.inject.Inject
 
 /**
- * This task clones another Git repo of the same group as this project itself into a subdirectory.
+ * This task clones another Git repository of the same group as this project itself into a subdirectory.
  * The project which uses this plagin is considered a workspace project, it's only purpose is to group other projects together.
  * You clone this workspace project first and you do it manually.
  * Other projects, which the workspace has are cloned to subdirectories.
  * They are cloned automatically, each by a separate instance of this task.
  * The subdirectories of the supporting projects should be specified in the .gitignore of the workspace project.
- * Remote Git repo URLs of the workspace project and containing projects are different only in their postfixes
+ * Remote Git repository URLs of the workspace project and containing projects are different only in their postfixes
  * which go just before the ".git" in the end.
  *
- * @param adjacentRepoPostfix
- * Git repo URL postfix of the cloned project.
+ * @param adjacentRepositoryPostfix
+ * Git repository URL postfix of the cloned project.
  *
  * @param directoryRelativePath
  * The subdirectory inside the workspace project to clone the other project to.
- * If not specified then the default equal to [adjacentRepoPostfix] is assumed.
+ * If not specified then the default equal to [adjacentRepositoryPostfix] is assumed.
  */
-abstract class CloneAdjacentGitRepoTask : DefaultTask() {
+abstract class CloneAdjacentGitRepositoryTask : DefaultTask() {
 
-    companion object {
-        /**
-         * Everything that goes before this and the ".git" afterwards is the same for this main projects and the supporting ones
-         */
-        // todo Сие нужно чтобы как-то можно было указать в параметрах. Не всегда воркспейсовый проект у нас будет называться workspace
-        private const val MAIN_PROJECT_REPO_POSTFIX: String = "workspace"
-    }
+    /**
+     * This is how we determine the parent path that is common for the workspace project and projects that are parts of it (adjacent
+     * projects).
+     * All relative repository paths are relative to this common parent path.
+     * We extract the parent part from the workspace repository path by specifying its "child" part in the end of the full path.
+     */
+    @Input
+    var workspaceRepositoryRelativePath: String? = null
 
     @Input
-    var adjacentRepoPostfix: String? = null
+    var adjacentRepositoryPostfix: String? = null
         set(value) {
             field = value
             updateDescription()
@@ -55,28 +55,28 @@ abstract class CloneAdjacentGitRepoTask : DefaultTask() {
     }
 
     private fun updateDescription() {
-        description = "Clones the $adjacentRepoPostfix project into a project subdirectory projects/$directoryRelativePath"
+        description = "Clones the $adjacentRepositoryPostfix project into a project subdirectory projects/$directoryRelativePath"
     }
 
     @TaskAction
     fun action() {
-
-        val adjacentRepoPostfix: String = this.adjacentRepoPostfix!!
+        val workspaceRepositoryRelativePath = this.workspaceRepositoryRelativePath!!.replace("\\.git$".toRegex(), "")
+        val adjacentRepositoryPostfix: String = this.adjacentRepositoryPostfix!!
         val directoryRelativePath: String = this.directoryRelativePath!!
 
         // Get the remote URL of the main project
-        val startingPointRepoUrl: String =
+        val workspaceRepositoryUrl: String =
             ProcessRunner.runProcess(project.projectDir, "git", "remote", "get-url", "origin")
 
         // Replacing the postfix of the main project with the postfix of the one being cloned
-        val adjacentRepoUrl: String = startingPointRepoUrl.replace(
-            "$MAIN_PROJECT_REPO_POSTFIX(?=\\.git$)".toRegex(),
-            adjacentRepoPostfix
+        val adjacentRepositoryUrl: String = workspaceRepositoryUrl.replace(
+            "$workspaceRepositoryRelativePath(?=\\.git$)".toRegex(),
+            adjacentRepositoryPostfix
         )
 
         // Determining the subdirectory to clone to
         val sourceDir: File = FileUtils.getFile(project.rootDir, "projects", directoryRelativePath)
 
-        GitUtils.forceClone(adjacentRepoUrl, sourceDir)
+        GitUtils.forceClone(adjacentRepositoryUrl, sourceDir)
     }
 }
