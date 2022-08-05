@@ -1,13 +1,16 @@
 import djig.DjigPlugin
 import djig.DjigPluginExtension
-import gitlabContainer.GitLabContainerPlugin
-import gitlabContainer.GitLabContainerPluginExtension
-import workspace.WorkspacePlugin
-import workspace.WorkspacePluginExtension
+import org.taruts.gitLabContainerGradlePlugin.GitLabContainerPluginExtension
+import org.taruts.workspaceGradlePlugin.WorkspacePluginExtension
+import java.net.URL
 
-apply<GitLabContainerPlugin>()
+plugins {
+    id("org.taruts.workspace") version "1.0.0"
+    id("org.taruts.gitlab-container") version "1.0.0"
+}
+
 configure<GitLabContainerPluginExtension> {
-    url.set(java.net.URL("http://localhost:9580"))
+    url.set(URL("http://localhost:9580"))
     username.set("user")
     password.set("123456789")
 }
@@ -19,7 +22,6 @@ configure<DjigPluginExtension> {
     }
 }
 
-apply<WorkspacePlugin>()
 configure<WorkspacePluginExtension> {
     workspaceRepositoryRelativePath.set("workspace")
     workspaceProject("example/app", "example-app")
