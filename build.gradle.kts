@@ -1,5 +1,4 @@
-import djig.DjigPlugin
-import djig.DjigPluginExtension
+import org.taruts.djigGradlePlugin.DjigPluginExtension
 import org.taruts.gitLabContainerGradlePlugin.GitLabContainerPluginExtension
 import org.taruts.workspaceGradlePlugin.WorkspacePluginExtension
 import java.net.URL
@@ -7,6 +6,7 @@ import java.net.URL
 plugins {
     id("org.taruts.workspace") version "1.0.0"
     id("org.taruts.gitlab-container") version "1.0.0"
+    id("org.taruts.djig") version "1.0.0"
 }
 
 configure<GitLabContainerPluginExtension> {
@@ -15,7 +15,6 @@ configure<GitLabContainerPluginExtension> {
     password.set("123456789")
 }
 
-apply<DjigPlugin>()
 configure<DjigPluginExtension> {
     localGitLabsCreation("projects/example-app", "dynamic-dev") {
         targetGitLabs.fromGitLabContainer("dynamic-local", "dynamic-local-")
