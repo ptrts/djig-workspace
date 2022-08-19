@@ -26,6 +26,7 @@ configure<WorkspacePluginExtension> {
     workspaceProject("example/app", "example-app")
     workspaceProject("example/dynamic-api", "example-dynamic-api")
     workspaceProject("example/dynamic-dev", "example-dynamic-dev")
+    workspaceProject("example/dynamic-dev-kotlin", "example-dynamic-dev-kotlin")
     workspaceProject("spring-boot-starter", "djig-spring-boot-starter")
     workspaceProject("dynamic-api", "djig-dynamic-api")
 }
